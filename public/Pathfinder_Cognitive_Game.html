@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pathfinder - Cognitive Assessment</title>
+    <style>
+        :root {
+            --bg-color: #050a14;
+            --container-bg: #0a192f;
+            --primary-color: #64ffda;
+            --star-color: #ffffff;
+            --star-glow: rgba(100, 255, 218, 0.6);
+            --success-color: #2ecc71;
+            --error-color: #ff4d4d;
+            --text-color: #ccd6f6;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(white, rgba(255,255,255,.2) 2px, transparent 40px),
+                radial-gradient(white, rgba(255,255,255,.15) 1px, transparent 30px),
+                radial-gradient(white, rgba(255,255,255,.1) 2px, transparent 40px);
+            background-size: 550px 550px, 350px 350px, 250px 250px;
+            color: var(--text-color);
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        #game-container {
+            width: 90vw;
+            height: 85vh;
+            max-width: 1000px;
+            max-height: 750px;
+            background: var(--container-bg);
+            border-radius: 24px;
+            box-shadow: 0 0 40px rgba(0,0,0,0.8), inset 0 0 20px rgba(100, 255, 218, 0.05);
+            position: relative;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid rgba(100, 255, 218, 0.15);
+            backdrop-filter: blur(10px);
+        }
+
+        #header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            width: 100%;
+        }
+
+        .stats-box {
+            background: rgba(10, 25, 47, 0.8);
+            padding: 10px 24px;
+            border-radius: 16px;
+            font-weight: 600;
+            font-size: 1.1em;
+            color: var(--primary-color);
+            border: 1px solid rgba(100, 255, 218, 0.3);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            min-width: 120px;
+            text-align: center;
+        }
+
+        #game-board {
+            flex-grow: 1;
+            position: relative;
+            border-radius: 16px;
+            background: rgba(0, 0, 0, 0.4);
+            cursor: crosshair;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: inset 0 0 30px rgba(0,0,0,0.5);
+        }
+
+        .node {
+            width: 44px;
+            height: 44px;
+            background: var(--star-color);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: absolute;
+            color: #000;
+            font-weight: 800;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 0 15px var(--star-color);
+            z-index: 2;
+            transform: translate(-50%, -50%); /* Center node on its coordinate */
+        }
+
+        .node:hover {
+            transform: translate(-50%, -50%) scale(1.25);
+            background: rgba(100, 255, 218, 0.2);
+            box-shadow: 0 0 25px var(--primary-color);
+            color: var(--primary-color);
+            border: 2px solid var(--primary-color);
+        }
+
+        .node.completed {
+            background: var(--primary-color);
+            color: var(--bg-color);
+            box-shadow: 0 0 10px var(--primary-color);
+            cursor: default;
+            transform: translate(-50%, -50%) scale(0.9);
+            opacity: 0.7;
+        }
+
+        .node.error {
+            background: var(--error-color);
+            box-shadow: 0 0 30px var(--error-color);
+            animation: shake 0.4s;
+            color: white;
+            z-index: 3;
+            transform: translate(-50%, -50%);
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translate(-50%, -50%); }
+            20% { transform: translate(calc(-50% - 10px), -50%); }
+            40% { transform: translate(calc(-50% + 10px), -50%); }
+            60% { transform: translate(calc(-50% - 5px), -50%); }
+            80% { transform: translate(calc(-50% + 5px), -50%); }
+        }
+
+        #overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(5, 10, 20, 0.9);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            border-radius: 24px;
+            text-align: center;
+            padding: 40px;
+            backdrop-filter: blur(15px);
+        }
+
+        h1 { font-size: 3.5em; color: var(--primary-color); margin: 0 0 15px 0; letter-spacing: 2px; text-shadow: 0 0 20px var(--star-glow); }
+        p { font-size: 1.2em; color: #8892b0; max-width: 600px; line-height: 1.6; margin-bottom: 30px; }
+
+        button {
+            background: transparent;
+            color: var(--primary-color);
+            border: 2px solid var(--primary-color);
+            padding: 16px 48px;
+            border-radius: 12px;
+            font-size: 1.2em;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        button:hover {
+            background: rgba(100, 255, 218, 0.1);
+            transform: translateY(-4px);
+            box-shadow: 0 10px 30px rgba(100, 255, 218, 0.2);
+        }
+
+        #report {
+            display: none;
+            width: 100%;
+            max-width: 550px;
+            background: rgba(255,255,255,0.02);
+            padding: 40px;
+            border-radius: 20px;
+            border: 1px solid rgba(100, 255, 218, 0.1);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.4);
+        }
+
+        .report-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 18px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            padding-bottom: 10px;
+            font-size: 1.2em;
+        }
+
+        canvas {
+            position: absolute;
+            top: 0; left: 0;
+            pointer-events: none;
+            z-index: 1;
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div id="header">
+        <div id="level-title" class="stats-box">Level: Easy</div>
+        <div id="timer" class="stats-box">60s</div>
+        <div id="errors" class="stats-box">Errors: 0</div>
+    </div>
+
+    <div id="game-board">
+        <canvas id="line-canvas"></canvas>
+    </div>
+
+    <div id="overlay">
+        <h1 id="overlay-title">Pathfinder</h1>
+        <p id="overlay-text">Connect the star nodes in the correct sequence to map the constellation.</p>
+        <button id="start-btn">Begin Assessment</button>
+        
+        <div id="report">
+            <h2 style="color: var(--primary-color); font-size: 2em; margin-bottom: 30px;">Mission Summary</h2>
+            <div class="report-item"><span>Accuracy:</span> <span id="rep-accuracy">0%</span></div>
+            <div class="report-item"><span>Completion Time:</span> <span id="rep-time">0s</span></div>
+            <div class="report-item"><span>Error Count:</span> <span id="rep-errors">0</span></div>
+            <div class="report-item"><span>Reaction Time:</span> <span id="rep-reaction">0ms</span></div>
+            <div class="report-item" style="margin-top: 30px; border-top: 2px solid rgba(100, 255, 218, 0.2); padding-top: 20px; font-weight: bold;">
+                <span>Cognitive Status:</span> <span id="rep-severity">Normal</span>
+            </div>
+            <button onclick="location.reload()" style="margin-top: 30px;">Restart</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const levels = [
+        { 
+            name: "Numeric Constellation", 
+            targets: ["1", "2", "3", "4", "5", "6", "7", "8"], 
+            timeLimit: 60
+        },
+        { 
+            name: "Alpha Constellation", 
+            targets: ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"], 
+            timeLimit: 60
+        },
+        { 
+            name: "The Grand Switch", 
+            targets: ["1", "A", "2", "B", "3", "C", "4", "D", "5", "E", "6", "F"], 
+            timeLimit: 60
+        }
+    ];
+
+    let currentLevelIndex = 0;
+    let currentTargetIndex = 0;
+    let errors = 0;
+    let totalErrors = 0;
+    let levelStartTime, lastClickTime;
+    let timerInterval;
+    let reactionTimes = [];
+    let completedLevelsData = [];
+
+    const board = document.getElementById('game-board');
+    const canvas = document.getElementById('line-canvas');
+    const ctx = canvas.getContext('2d');
+    const overlay = document.getElementById('overlay');
+    const startBtn = document.getElementById('start-btn');
+
+    function initBoard() {
+        board.querySelectorAll('.node').forEach(n => n.remove());
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Ensure canvas matches board exactly
+        canvas.width = board.clientWidth;
+        canvas.height = board.clientHeight;
+
+        const level = levels[currentLevelIndex];
+        const nodes = [];
+        const padding = 80;
+        const nodeSize = 44;
+
+        level.targets.forEach((label, index) => {
+            let x, y, overlap;
+            let attempts = 0;
+            do {
+                overlap = false;
+                x = padding + Math.random() * (canvas.width - padding * 2);
+                y = padding + Math.random() * (canvas.height - padding * 2);
+                
+                for (let other of nodes) {
+                    const dist = Math.sqrt((x - other.x)**2 + (y - other.y)**2);
+                    if (dist < 90) overlap = true;
+                }
+                attempts++;
+            } while (overlap && attempts < 200);
+
+            const node = document.createElement('div');
+            node.className = 'node';
+            node.innerText = label;
+            node.style.left = `${x}px`;
+            node.style.top = `${y}px`;
+            node.dataset.index = index;
+            
+            node.onclick = (e) => handleNodeClick(index, x, y, node);
+            
+            board.appendChild(node);
+            nodes.push({x, y, label});
+        });
+
+        currentTargetIndex = 0;
+        errors = 0;
+        updateStats();
+    }
+
+    function handleNodeClick(index, x, y, element) {
+        const now = Date.now();
+        if (index === currentTargetIndex) {
+            if (lastClickTime) reactionTimes.push(now - lastClickTime);
+            lastClickTime = now;
+
+            element.classList.add('completed');
+            
+            if (currentTargetIndex > 0) {
+                const prevNode = Array.from(board.querySelectorAll('.node')).find(n => parseInt(n.dataset.index) === currentTargetIndex - 1);
+                const prevX = parseFloat(prevNode.style.left);
+                const prevY = parseFloat(prevNode.style.top);
+                drawLine(prevX, prevY, x, y);
+            }
+
+            currentTargetIndex++;
+
+            if (currentTargetIndex === levels[currentLevelIndex].targets.length) {
+                finishLevel(true);
+            }
+        } else if (!element.classList.contains('completed')) {
+            errors++;
+            totalErrors++;
+            updateStats();
+            element.classList.add('error');
+            setTimeout(() => element.classList.remove('error'), 400);
+        }
+    }
+
+    function drawLine(x1, y1, x2, y2) {
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        
+        // Gradient for stardust effect
+        const grad = ctx.createLinearGradient(x1, y1, x2, y2);
+        grad.addColorStop(0, 'rgba(100, 255, 218, 0.8)');
+        grad.addColorStop(1, 'rgba(255, 255, 255, 0.4)');
+        
+        ctx.strokeStyle = grad;
+        ctx.lineWidth = 2;
+        ctx.setLineDash([2, 4]);
+        ctx.stroke();
+    }
+
+    function updateStats() {
+        document.getElementById('level-title').innerText = levels[currentLevelIndex].name;
+        document.getElementById('errors').innerText = `Errors: ${errors}`;
+    }
+
+    function startTimer() {
+        let timeLeft = levels[currentLevelIndex].timeLimit;
+        document.getElementById('timer').innerText = `${timeLeft}s`;
+        levelStartTime = Date.now();
+        lastClickTime = levelStartTime;
+
+        timerInterval = setInterval(() => {
+            timeLeft--;
+            document.getElementById('timer').innerText = `${timeLeft}s`;
+            if (timeLeft <= 0) {
+                finishLevel(false);
+            }
+        }, 1000);
+    }
+
+    function finishLevel(success) {
+        clearInterval(timerInterval);
+        const level = levels[currentLevelIndex];
+        const timeTaken = (Date.now() - levelStartTime) / 1000;
+        
+        // Calculate accuracy based on how many they managed to click vs errors
+        const accuracy = currentTargetIndex === 0 && errors === 0 ? 0 : currentTargetIndex / (currentTargetIndex + errors);
+        
+        completedLevelsData.push({ accuracy, timeTaken, errors, success });
+        currentLevelIndex++;
+        
+        if (currentLevelIndex < levels.length) {
+            const msg = success ? "Section Complete" : "Time's Up";
+            showOverlay(msg, `Moving to the next phase: ${levels[currentLevelIndex].name}.`, "Continue");
+        } else {
+            showFinalReport();
+        }
+    }
+
+    function showOverlay(title, text, btnText) {
+        document.getElementById('overlay-title').innerText = title;
+        document.getElementById('overlay-text').innerText = text;
+        startBtn.innerText = btnText;
+        startBtn.style.display = 'block';
+        document.getElementById('report').style.display = 'none';
+        document.getElementById('overlay-text').style.display = 'block';
+        overlay.style.display = 'flex';
+    }
+
+    async function showFinalReport() {
+        overlay.style.display = 'flex';
+        document.getElementById('overlay-title').innerText = "Assessment Complete";
+        document.getElementById('overlay-text').style.display = 'none';
+        startBtn.style.display = 'none';
+        document.getElementById('report').style.display = 'block';
+
+        const totalLevels = levels.length;
+        const avgAcc = completedLevelsData.reduce((a, b) => a + b.accuracy, 0) / totalLevels;
+        const totalTime = completedLevelsData.reduce((a, b) => a + b.timeTaken, 0);
+        const avgReaction = reactionTimes.length > 0 ? reactionTimes.reduce((a,b) => a+b, 0) / reactionTimes.length : 0;
+
+        document.getElementById('rep-accuracy').innerText = `${(avgAcc * 100).toFixed(1)}%`;
+        document.getElementById('rep-time').innerText = `${totalTime.toFixed(1)}s`;
+        document.getElementById('rep-errors').innerText = totalErrors;
+        document.getElementById('rep-reaction').innerText = `${avgReaction.toFixed(0)}ms`;
+
+        let severity = "Normal";
+        // Diagnostic threshold based on accuracy and significant errors
+        if (avgAcc < 0.7 || totalErrors > 10) severity = "Significant Concern";
+        else if (avgAcc < 0.85 || totalErrors > 5) severity = "Mild Variation";
+
+        const sevEl = document.getElementById('rep-severity');
+        sevEl.innerText = severity;
+        if (severity === "Normal") sevEl.style.color = "var(--success-color)";
+        else if (severity === "Mild Variation") sevEl.style.color = "#f39c12";
+        else sevEl.style.color = "var(--error-color)";
+
+        // Send results to backend and handle adaptive difficulty
+        const userId = localStorage.getItem('userId');
+        if (userId) {
+            const data = {
+                userId,
+                assessment: {
+                    game: 'Pathfinder',
+                    accuracy: avgAcc,
+                    completionTime: totalTime,
+                    errorCount: totalErrors,
+                    reactionTime: avgReaction,
+                    severity,
+                    timestamp: new Date().toISOString()
+                }
+            };
+            try {
+                const response = await fetch('http://localhost:5000/api/assessment', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await response.json();
+
+                // Show Adaptive Feedback
+                if (result.performanceScore !== undefined) {
+                    const feedbackEl = document.createElement('div');
+                    feedbackEl.style.marginTop = '20px';
+                    feedbackEl.style.color = 'var(--primary-color)';
+                    feedbackEl.style.fontSize = '1.1em';
+                    feedbackEl.innerHTML = `
+                        Performance Score: <strong>${result.performanceScore.toFixed(0)}/100</strong><br>
+                        Next Recommended Difficulty: <strong>${result.recommendedDifficulty || result.nextDifficulty}</strong>
+                    `;
+                    document.getElementById('report').appendChild(feedbackEl);
+                }
+            } catch (error) {
+                console.error('Error saving assessment:', error);
+            }
+        }
+        }
+
+    startBtn.onclick = () => {
+        overlay.style.display = 'none';
+        initBoard();
+        startTimer();
+    };
+
+    window.onresize = () => {
+        if (overlay.style.display === 'none') initBoard();
+    };
+</script>
+
+</body>
+</html>

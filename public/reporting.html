@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NeuroMetric — Reporting & Visualization</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --cream:       #faf7f2;
+      --paper:       #f4efe6;
+      --paper-2:     #ede6d8;
+      --paper-3:     #e0d5c0;
+      --ink:         #1a1510;
+      --ink-soft:    #3d3428;
+      --ink-muted:   #7a6e5a;
+      --rust:        #c4512a;
+      --border:      rgba(100,80,40,0.14);
+      --font-display: 'Playfair Display', serif;
+      --font-body:    'DM Sans', sans-serif;
+    }
+    body {
+      font-family: var(--font-body);
+      background: var(--cream);
+      color: var(--ink);
+      min-height: 100vh;
+    }
+    .display { font-family: var(--font-display); }
+    .card {
+      background: var(--paper);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+    }
+    .nav-link {
+      padding: 10px 20px;
+      border-radius: 30px;
+      font-size: 13px;
+      font-weight: 600;
+      transition: all 0.2s;
+      color: var(--ink-muted);
+    }
+    .nav-link.active {
+      background: var(--ink);
+      color: var(--cream);
+    }
+    .nav-link:hover:not(.active) {
+      background: var(--paper-2);
+      color: var(--ink);
+    }
+    canvas {
+      max-width: 100%;
+    }
+    @media print {
+      nav { display: none; }
+      body { background: white; }
+      .card { border: none; box-shadow: none; background: white; }
+      .no-print { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-200 py-4 px-8 flex justify-between items-center shadow-sm no-print">
+    <div class="display text-2xl font-bold">Neuro<span class="text-[var(--rust)] italic">Metric</span></div>
+    <div class="flex gap-4 items-center">
+      <a href="interpretation.html" class="nav-link">Interpretation</a>
+      <a href="reporting.html" class="nav-link active">Visual Report</a>
+      <a href="recommendations.html" class="nav-link">Recommendations</a>
+      <button onclick="SessionManager.logout()" class="nav-link border border-gray-200 hover:bg-gray-50 ml-2">Logout</button>
+    </div>
+  </nav>
+
+  <main class="pt-32 pb-20 px-8 max-w-6xl mx-auto">
+    <header class="flex justify-between items-end mb-12">
+      <div>
+        <div class="text-[var(--rust)] font-bold tracking-[3px] uppercase text-xs mb-4">Reporting & Visualization</div>
+        <h1 class="display text-5xl font-black">Visual Performance Profile</h1>
+      </div>
+      <button onclick="window.print()" class="no-print bg-white border border-[var(--border)] px-6 py-3 rounded-xl text-sm font-bold hover:bg-gray-50 transition-all flex items-center gap-2">
+        <span>🖨️</span> Print Report
+      </button>
+    </header>
+
+    <div class="grid grid-cols-12 gap-8">
+      <!-- Trend Chart (Full Width) -->
+      <div class="col-span-12 card p-10">
+        <div class="flex justify-between items-center mb-8">
+          <h3 class="display text-2xl font-bold">Longitudinal Progress (Monthly Trend)</h3>
+          <div class="text-xs text-[var(--ink-muted)] font-mono uppercase tracking-widest">Historical Performance Tracking</div>
+        </div>
+        <div class="h-80">
+          <canvas id="trendChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Radar Chart -->
+      <div class="col-span-12 lg:col-span-5 card p-10 flex flex-col items-center">
+        <h3 class="display text-xl font-bold mb-8 text-center">Cognitive Domain Radar</h3>
+        <div class="w-full aspect-square">
+          <canvas id="radarChart"></canvas>
+        </div>
+        <p class="mt-8 text-xs text-[var(--ink-muted)] text-center leading-relaxed">
+          The radar map visualizes performance across core cognitive pillars. Balanced area coverage indicates healthy multi-domain function.
+        </p>
+      </div>
+
+      <!-- Bar Chart & Stats -->
+      <div class="col-span-12 lg:col-span-7 flex flex-col gap-8">
+        <div class="card p-8">
+          <h3 class="display text-xl font-bold mb-6">Module Performance Accuracy</h3>
+          <div class="h-64">
+            <canvas id="performanceChart"></canvas>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-8">
+          <div class="card p-8 bg-[var(--ink)] text-white">
+            <h4 class="text-xs uppercase tracking-widest text-gray-400 mb-2">Avg Response Time</h4>
+            <div class="display text-4xl font-bold mb-1" id="stat-rt">--ms</div>
+            <div class="text-xs text-[var(--rust)] font-bold">Processing Speed</div>
+          </div>
+          <div class="card p-8 bg-white border-none shadow-sm">
+            <h4 class="text-xs uppercase tracking-widest text-gray-400 mb-2">Consistency Score</h4>
+            <div class="display text-4xl font-bold mb-1" id="stat-acc">--%</div>
+            <div class="text-xs text-[var(--forest)] font-bold">Accuracy Baseline</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Detailed Breakdown Table -->
+      <div class="col-span-12 card p-10 overflow-hidden">
+        <h3 class="display text-xl font-bold mb-8">Raw Performance Data</h3>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <thead>
+              <tr class="text-[var(--ink-muted)] border-b border-[var(--border)]">
+                <th class="pb-4 font-bold uppercase tracking-wider">Assessment Module</th>
+                <th class="pb-4 font-bold uppercase tracking-wider">Status</th>
+                <th class="pb-4 font-bold uppercase tracking-wider text-right">Errors</th>
+                <th class="pb-4 font-bold uppercase tracking-wider text-right">Time (ms)</th>
+              </tr>
+            </thead>
+            <tbody id="table-body">
+              <!-- Data rows here -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script type="module">
+    import { SessionManager } from "./js/auth.js";
+    window.SessionManager = SessionManager;
+
+    async function loadData() {
+      try {
+        const user = await SessionManager.checkSession();
+        if (!user) return;
+
+        const response = await fetch('/api/assessments', {
+          headers: { "Authorization": `Bearer ${localStorage.getItem('neuro_token')}` }
+        });
+        
+        if (!response.ok) throw new Error("Failed to fetch assessment data");
+        
+        const assessments = await response.json();
+        
+        if (assessments && assessments.length > 0) {
+          const latest = assessments[0];
+          const detailed = JSON.parse(latest.detailed_stats);
+          
+          initCharts(latest, detailed, assessments); // Pass all assessments for trends
+          renderTable(detailed);
+          document.getElementById('stat-rt').textContent = latest.avg_rt_ms + 'ms';
+          document.getElementById('stat-acc').textContent = latest.accuracy + '%';
+        }
+      } catch (error) {
+        console.error("Error loading reporting data:", error);
+      }
+    }
+
+    function initCharts(latest, detailed, allHistory) {
+      const bm = detailed.moduleBreakdown;
+      
+      // 1. Trend Chart (Longitudinal)
+      const trendCtx = document.getElementById('trendChart').getContext('2d');
+      const trendData = [...allHistory].reverse(); // Oldest first for the graph
+      
+      new Chart(trendCtx, {
+        type: 'line',
+        data: {
+          labels: trendData.map(a => new Date(a.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })),
+          datasets: [{
+            label: 'Overall Cognitive Score',
+            data: trendData.map(a => a.overall_score),
+            borderColor: '#c4512a',
+            backgroundColor: 'rgba(196, 81, 42, 0.1)',
+            fill: true,
+            tension: 0.4,
+            pointRadius: 6,
+            pointBackgroundColor: '#c4512a',
+            borderWidth: 3
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: { min: 0, max: 100, grid: { color: 'rgba(0,0,0,0.05)' } },
+            x: { grid: { display: false } }
+          }
+        }
+      });
+
+      // 2. Radar Chart Data
+      const radarCtx = document.getElementById('radarChart').getContext('2d');
+      new Chart(radarCtx, {
+        type: 'radar',
+        data: {
+          labels: ['Memory', 'Executive', 'Attention', 'Visuospatial', 'Speed'],
+          datasets: [{
+            label: 'Cognitive Score',
+            data: [
+              bm['Recognition Memory'].success ? 90 : 40,
+              bm['Pathfinder'].errors < 2 ? 95 : 60,
+              detailed.kitchenRush.stage_3.accuracy_pct,
+              bm['Clock Drawing'].success ? 100 : 30,
+              Math.max(20, 100 - (latest.avg_rt_ms / 10))
+            ],
+            fill: true,
+            backgroundColor: 'rgba(196, 81, 42, 0.2)',
+            borderColor: '#c4512a',
+            pointBackgroundColor: '#c4512a',
+            pointBorderColor: '#fff'
+          }]
+        },
+        options: {
+          scales: { r: { min: 0, max: 100, ticks: { display: false } } },
+          plugins: { legend: { display: false } }
+        }
+      });
+
+      // 2. Performance Bar Chart
+      const perfCtx = document.getElementById('performanceChart').getContext('2d');
+      const moduleNames = Object.keys(bm);
+      new Chart(perfCtx, {
+        type: 'bar',
+        data: {
+          labels: moduleNames,
+          datasets: [{
+            label: 'Errors',
+            data: moduleNames.map(name => bm[name].errors),
+            backgroundColor: '#1a1510',
+            borderRadius: 8
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } },
+            x: { grid: { display: false }, ticks: { font: { size: 10 } } }
+          }
+        }
+      });
+    }
+
+    function renderTable(detailed) {
+      const tbody = document.getElementById('table-body');
+      const bm = detailed.moduleBreakdown;
+      
+      tbody.innerHTML = Object.entries(bm).map(([name, stats]) => `
+        <tr class="border-b border-[var(--border)] last:border-none">
+          <td class="py-4 font-bold">${name}</td>
+          <td class="py-4">
+            <span class="px-2 py-1 rounded-md text-[10px] font-bold uppercase ${stats.success ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
+              ${stats.success ? 'Success' : 'Attention Needed'}
+            </span>
+          </td>
+          <td class="py-4 text-right font-mono">${stats.errors}</td>
+          <td class="py-4 text-right font-mono">${stats.duration_ms}</td>
+        </tr>
+      `).join('');
+    }
+
+    loadData();
+  </script>
+</body>
+</html>

@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NeuroMetric — Recommendations</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --cream:       #faf7f2;
+      --paper:       #f4efe6;
+      --paper-2:     #ede6d8;
+      --paper-3:     #e0d5c0;
+      --ink:         #1a1510;
+      --ink-soft:    #3d3428;
+      --ink-muted:   #7a6e5a;
+      --rust:        #c4512a;
+      --forest:      #2e6e46;
+      --slate-blue:  #3b5a8a;
+      --border:      rgba(100,80,40,0.14);
+      --font-display: 'Playfair Display', serif;
+      --font-body:    'DM Sans', sans-serif;
+    }
+    body {
+      font-family: var(--font-body);
+      background: var(--cream);
+      color: var(--ink);
+      min-height: 100vh;
+    }
+    .display { font-family: var(--font-display); }
+    .card {
+      background: var(--paper);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+    }
+    .nav-link {
+      padding: 10px 20px;
+      border-radius: 30px;
+      font-size: 13px;
+      font-weight: 600;
+      transition: all 0.2s;
+      color: var(--ink-muted);
+    }
+    .nav-link.active {
+      background: var(--ink);
+      color: var(--cream);
+    }
+    .nav-link:hover:not(.active) {
+      background: var(--paper-2);
+      color: var(--ink);
+    }
+    .reco-card {
+      transition: transform 0.2s;
+      cursor: default;
+    }
+    .reco-card:hover {
+      transform: translateY(-4px);
+    }
+    .dot {
+      width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 8px;
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-200 py-4 px-8 flex justify-between items-center shadow-sm">
+    <div class="display text-2xl font-bold">Neuro<span class="text-[var(--rust)] italic">Metric</span></div>
+    <div class="flex gap-4 items-center">
+      <a href="interpretation.html" class="nav-link">Interpretation</a>
+      <a href="reporting.html" class="nav-link">Visual Report</a>
+      <a href="recommendations.html" class="nav-link active">Recommendations</a>
+      <button onclick="SessionManager.logout()" class="nav-link border border-gray-200 hover:bg-gray-50 ml-2">Logout</button>
+    </div>
+  </nav>
+
+  <main class="pt-32 pb-20 px-8 max-w-5xl mx-auto">
+    <header class="text-center mb-16">
+      <div class="text-[var(--rust)] font-bold tracking-[3px] uppercase text-xs mb-4">Personalized Recommendations</div>
+      <h1 class="display text-5xl font-black mb-6">Pathways to Optimization</h1>
+      <p class="text-[var(--ink-muted)] text-lg max-w-2xl mx-auto">Based on your unique cognitive profile, we've identified the following strategies to maintain and improve brain health.</p>
+    </header>
+
+    <div id="reco-container" class="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <!-- Recommendations will be injected here -->
+    </div>
+
+    <div class="mt-16 card p-10 bg-[var(--ink)] text-white text-center">
+      <h3 class="display text-2xl font-bold mb-4">Ready for another check?</h3>
+      <p class="opacity-70 mb-8 max-w-xl mx-auto text-sm">Consistent longitudinal tracking is key to early detection. We recommend re-assessing every 3-6 months.</p>
+      <a href="dashboard.html" class="inline-block bg-[var(--rust)] text-white px-10 py-4 rounded-xl font-bold tracking-widest text-sm uppercase hover:scale-105 transition-all">
+        Back to Dashboard
+      </a>
+    </div>
+
+    <footer class="mt-20 pt-10 border-t border-[var(--border)] text-center text-xs text-[var(--ink-muted)]">
+      <p>⚠ Consult with a healthcare professional before starting any new cognitive or physical exercise regimen.</p>
+    </footer>
+  </main>
+
+  <script type="module">
+    import { SessionManager } from "./js/auth.js";
+    window.SessionManager = SessionManager;
+
+    async function loadRecommendations() {
+      try {
+        const user = await SessionManager.checkSession();
+        if (!user) return;
+
+        const response = await fetch('/api/assessments', {
+          headers: { "Authorization": `Bearer ${localStorage.getItem('neuro_token')}` }
+        });
+        
+        if (!response.ok) throw new Error("Failed to fetch assessment data");
+        
+        const assessments = await response.json();
+        
+        if (assessments && assessments.length > 0) {
+          const latest = assessments[0];
+          const detailed = JSON.parse(latest.detailed_stats);
+          generateContent(latest, detailed);
+        }
+      } catch (error) {
+        console.error("Error loading recommendations:", error);
+      }
+    }
+
+    function generateContent(latest, detailed) {
+      const container = document.getElementById('reco-container');
+      
+      const recommendations = [];
+
+      // 1. Priority Recommendation based on risk factors
+      if (detailed.Risk_Alzheimers !== 'LOW') {
+        recommendations.push({
+          type: 'Cognitive',
+          title: 'Memory Consolidation',
+          color: 'var(--rust)',
+          text: 'Practice "Spaced Repetition" techniques. Use apps that challenge recall patterns or try memorizing daily grocery lists before writing them down.',
+          icon: '🧠'
+        });
+      }
+
+      if (detailed.Risk_Parkinsons !== 'LOW') {
+        recommendations.push({
+          type: 'Physical',
+          title: 'Motor-Cognitive Training',
+          color: 'var(--slate-blue)',
+          text: 'Engage in activities that combine movement with focus, such as Tai Chi, dancing, or specialized coordination exercises to improve processing speed.',
+          icon: '🏃'
+        });
+      }
+
+      if (detailed.Risk_Dementia !== 'LOW') {
+        recommendations.push({
+          type: 'Executive',
+          title: 'Strategy & Planning',
+          color: 'var(--ink)',
+          text: 'Challenge your executive switching by learning a new language or playing strategy games (Chess, Sudoku) that require multi-step planning.',
+          icon: '♟️'
+        });
+      }
+
+      // 2. Lifestyle Baseline (Always present)
+      recommendations.push({
+        type: 'Lifestyle',
+        title: 'Sleep & Brain Hygiene',
+        color: 'var(--forest)',
+        text: 'Prioritize 7-9 hours of quality sleep. Sleep is when the brain clears metabolic waste (amyloid-beta) crucial for preventing cognitive decline.',
+        icon: '🌙'
+      }, {
+        type: 'Nutrition',
+        title: 'MIND Diet Approach',
+        color: '#d4820a',
+        text: 'Increase intake of leafy greens, berries, and omega-3 fatty acids. These have been clinically shown to slow cognitive aging by several years.',
+        icon: '🥗'
+      });
+
+      container.innerHTML = recommendations.map(r => `
+        <div class="card p-10 reco-card">
+          <div class="flex items-center gap-3 mb-4">
+            <span class="text-3xl">${r.icon}</span>
+            <div class="text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full border border-[var(--border)]" style="color: ${r.color}">
+              ${r.type}
+            </div>
+          </div>
+          <h3 class="display text-2xl font-bold mb-4">${r.title}</h3>
+          <p class="text-[var(--ink-soft)] leading-relaxed text-sm opacity-80">
+            ${r.text}
+          </p>
+          <div class="mt-8 flex items-center gap-2 text-xs font-bold" style="color: ${r.color}">
+            <span class="dot" style="background-color: ${r.color}"></span>
+            High Impact Strategy
+          </div>
+        </div>
+      `).join('');
+    }
+
+    loadRecommendations();
+  </script>
+</body>
+</html>

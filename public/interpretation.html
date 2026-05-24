@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NeuroMetric — Clinical Interpretation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --cream:       #faf7f2;
+      --paper:       #f4efe6;
+      --paper-2:     #ede6d8;
+      --paper-3:     #e0d5c0;
+      --ink:         #1a1510;
+      --ink-soft:    #3d3428;
+      --ink-muted:   #7a6e5a;
+      --rust:        #c4512a;
+      --rust-dim:    rgba(196,81,42,0.10);
+      --rust-glow:   rgba(196,81,42,0.25);
+      --amber:       #d4820a;
+      --amber-dim:   rgba(212,130,10,0.10);
+      --forest:      #2e6e46;
+      --forest-dim:  rgba(46,110,70,0.10);
+      --slate-blue:  #3b5a8a;
+      --slate-dim:   rgba(59,90,138,0.10);
+      --rose:        #b83050;
+      --rose-dim:    rgba(184,48,80,0.10);
+      --border:      rgba(100,80,40,0.14);
+      --shadow:      0 2px 40px rgba(80,50,10,0.10);
+      --font-display: 'Playfair Display', serif;
+      --font-body:    'DM Sans', sans-serif;
+      --font-mono:    'DM Mono', monospace;
+    }
+    body {
+      font-family: var(--font-body);
+      background: var(--cream);
+      color: var(--ink);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+    .display { font-family: var(--font-display); }
+    .card {
+      background: var(--paper);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      box-shadow: var(--shadow);
+    }
+    .nav-link {
+      padding: 10px 20px;
+      border-radius: 30px;
+      font-size: 13px;
+      font-weight: 600;
+      transition: all 0.2s;
+      color: var(--ink-muted);
+    }
+    .nav-link.active {
+      background: var(--ink);
+      color: var(--cream);
+    }
+    .nav-link:hover:not(.active) {
+      background: var(--paper-2);
+      color: var(--ink);
+    }
+    .risk-chip { display: inline-block; padding: 4px 14px; border-radius: 20px; font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+    .risk-low      { background: var(--forest-dim); color: var(--forest); }
+    .risk-moderate { background: var(--amber-dim);  color: var(--amber); }
+    .risk-high     { background: var(--rose-dim);   color: var(--rose); }
+    
+    #loading-overlay {
+      position: fixed; inset: 0; background: var(--cream);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      z-index: 10000;
+    }
+    .spinner {
+      width: 40px; height: 40px; border: 3px solid var(--paper-3);
+      border-top-color: var(--rust); border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+  <div id="loading-overlay">
+    <div class="spinner mb-4"></div>
+    <div class="display text-xl font-bold">Analyzing Clinical Data...</div>
+  </div>
+
+  <nav class="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-200 py-4 px-8 flex justify-between items-center shadow-sm">
+    <div class="display text-2xl font-bold">Neuro<span class="text-[var(--rust)] italic">Metric</span></div>
+    <div class="flex gap-4 items-center">
+      <a href="interpretation.html" class="nav-link active">Interpretation</a>
+      <a href="reporting.html" class="nav-link">Visual Report</a>
+      <a href="recommendations.html" class="nav-link">Recommendations</a>
+      <button onclick="SessionManager.logout()" class="nav-link border border-gray-200 hover:bg-gray-50 ml-2">Logout</button>
+    </div>
+  </nav>
+
+  <main class="pt-32 pb-20 px-8 max-w-5xl mx-auto">
+    <header class="text-center mb-16">
+      <div class="text-[var(--rust)] font-bold tracking-[3px] uppercase text-xs mb-4">Clinical Interpretation</div>
+      <h1 class="display text-5xl font-black mb-6">Cognitive Domain Analysis</h1>
+      <p class="text-[var(--ink-muted)] text-lg max-w-2xl mx-auto">This report provides a clinical narrative of the assessment results, mapping task performance to neurological domains.</p>
+    </header>
+
+    <div id="interpretation-content" class="grid gap-8">
+      <!-- Data will be injected here -->
+    </div>
+
+    <footer class="mt-20 pt-10 border-t border-[var(--border)] text-center text-xs text-[var(--ink-muted)]">
+      <p>© 2026 NeuroMetric Clinical Suite. This is a non-diagnostic screening tool.</p>
+    </footer>
+  </main>
+
+  <script type="module">
+    import { SessionManager } from "./js/auth.js";
+    window.SessionManager = SessionManager;
+
+    async function fetchLatestResult() {
+      const loadingOverlay = document.getElementById('loading-overlay');
+      try {
+        const user = await SessionManager.checkSession();
+        if (!user) return;
+
+        const response = await fetch('/api/assessments', {
+          headers: { "Authorization": `Bearer ${localStorage.getItem('neuro_token')}` }
+        });
+        
+        if (!response.ok) throw new Error("Failed to fetch assessment data");
+        
+        const assessments = await response.json();
+        
+        if (assessments && assessments.length > 0) {
+          const latest = assessments[0];
+          // Merge top-level stats with detailed JSON
+          const detailed = JSON.parse(latest.detailed_stats);
+          const mergedData = {
+            ...latest,
+            ...detailed,
+            testerName: user.full_name // From checkSession()
+          };
+          renderInterpretation(mergedData);
+        } else {
+          document.getElementById('interpretation-content').innerHTML = `
+            <div class="card p-12 text-center">
+              <div class="text-4xl mb-4">📂</div>
+              <h2 class="display text-2xl font-bold mb-2">No Records Found</h2>
+              <p class="text-[var(--ink-muted)]">Please complete an assessment first to view the interpretation.</p>
+              <a href="merged_games.html" class="mt-6 inline-block bg-[var(--rust)] text-white px-8 py-3 rounded-xl font-bold">Start Assessment</a>
+            </div>`;
+          if (loadingOverlay) loadingOverlay.style.display = 'none';
+        }
+      } catch (error) {
+        console.error("Error fetching results:", error);
+        if (loadingOverlay) loadingOverlay.style.display = 'none';
+        document.getElementById('interpretation-content').innerHTML = `
+            <div class="card p-12 text-center">
+              <div class="text-4xl mb-4">⚠️</div>
+              <h2 class="display text-2xl font-bold mb-2">Connection Error</h2>
+              <p class="text-[var(--ink-muted)]">${error.message || "Failed to fetch results."}</p>
+              <button onclick="location.reload()" class="mt-6 inline-block bg-[var(--ink)] text-white px-8 py-3 rounded-xl font-bold">Retry</button>
+            </div>`;
+      }
+    }
+
+    function renderInterpretation(data) {
+      const container = document.getElementById('interpretation-content');
+      
+      const rc = (r) => r === 'LOW' ? 'risk-low' : r === 'MODERATE' ? 'risk-moderate' : 'risk-high';
+
+      // Mapping SQLite fields to what the template expects
+      const Overall_Score = data.overall_score;
+      const Accuracy_Percent = data.accuracy;
+      const Avg_Response_Time_Ms = data.avg_rt_ms;
+      const Risk_Alzheimers = data.Risk_Alzheimers;
+      const Risk_Dementia = data.Risk_Dementia;
+      const Risk_Parkinsons = data.Risk_Parkinsons;
+
+      const domains = [
+        {
+          title: "Memory (Encoding & Recognition)",
+          risk: Risk_Alzheimers,
+          summary: Risk_Alzheimers === 'HIGH' 
+            ? "Significant difficulties were noted in both sequence retention (Tile Memory) and object recognition. This pattern often correlates with early-stage hippocampal involvement."
+            : Risk_Alzheimers === 'MODERATE'
+            ? "Some inconsistency was observed in recall tasks. While recognition remains functional, encoding of new sequences showed signs of strain."
+            : "Strong performance in memory modules. Both immediate encoding and delayed recognition are within expected clinical baselines.",
+          metrics: `Accuracy: ${data.moduleBreakdown['Recognition Memory'].success ? 'Pass' : 'Fail'} | Errors: ${data.moduleBreakdown['Recognition Memory'].errors}`
+        },
+        {
+          title: "Executive Function & Visuospatial",
+          risk: Risk_Dementia,
+          summary: Risk_Dementia === 'HIGH'
+            ? "Errors in the Pathfinder task and Clock Drawing suggest a breakdown in cognitive flexibility and spatial organization. This can impact daily complex task management."
+            : Risk_Dementia === 'MODERATE'
+            ? "Visuospatial processing is intact, but executive switching (Pathfinder) shows increased latency and minor sequencing errors."
+            : "Excellent executive control. The ability to switch between numeric and alphabetic sequences is fluid, and spatial construction is accurate.",
+          metrics: `Pathfinder Errors: ${data.moduleBreakdown['Pathfinder'].errors} | Clock Drawing: ${data.moduleBreakdown['Clock Drawing'].success ? 'Accurate' : 'Incomplete'}`
+        },
+        {
+          title: "Attention & Processing Speed",
+          risk: Risk_Parkinsons,
+          summary: Risk_Parkinsons === 'HIGH'
+            ? "Reaction times across Kitchen Rush stages are significantly delayed. High error rates in vigilance tasks may indicate motor-cognitive slowing or focus fatigue."
+            : Risk_Parkinsons === 'MODERATE'
+            ? "Attention is generally sustained, but processing speed fluctuates under multi-tasking conditions (Kitchen Rush)."
+            : "Superior processing speed and vigilance. Reaction times remained consistent even during high-load multitasking scenarios.",
+          metrics: `Avg Reaction Time: ${Avg_Response_Time_Ms}ms | Kitchen Rush Hits: ${data.kitchenRush.stage_3.hits}`
+        }
+      ];
+
+      container.innerHTML = `
+        <div class="card p-8 bg-white border-none shadow-sm flex justify-between items-center mb-4">
+          <div>
+            <div class="text-xs font-bold text-[var(--ink-muted)] uppercase tracking-wider mb-1">Subject Name</div>
+            <div class="display text-2xl font-bold">${data.testerName}</div>
+          </div>
+          <div class="text-right">
+            <div class="text-xs font-bold text-[var(--ink-muted)] uppercase tracking-wider mb-1">Overall Score</div>
+            <div class="display text-4xl font-black text-[var(--rust)]">${Overall_Score}<span class="text-sm font-normal text-gray-400">/100</span></div>
+          </div>
+        </div>
+
+        ${domains.map(d => `
+          <div class="card p-10 flex gap-10 items-start">
+            <div class="w-1/3">
+              <h3 class="display text-xl font-bold mb-4">${d.title}</h3>
+              <div class="risk-chip ${rc(d.risk)}">${d.risk} RISK</div>
+            </div>
+            <div class="w-2/3">
+              <p class="text-[var(--ink-soft)] leading-relaxed mb-6 text-lg">${d.summary}</p>
+              <div class="bg-[var(--paper-2)] p-4 rounded-xl font-mono text-xs text-[var(--ink-muted)]">
+                Key Metrics: ${d.metrics}
+              </div>
+            </div>
+          </div>
+        `).join('')}
+
+        <div class="mt-8 grid grid-cols-2 gap-8">
+          <div class="card p-8 border-dashed border-2 bg-transparent">
+            <h4 class="display font-bold mb-3">Clinical Impression</h4>
+            <p class="text-sm text-[var(--ink-muted)] leading-relaxed">
+              Based on the aggregate data, the patient demonstrates an overall accuracy of ${Accuracy_Percent}%. 
+              ${Overall_Score < 60 ? 'Immediate clinical follow-up is suggested due to multi-domain deficits.' : 'Performance is generally consistent with healthy cognitive aging, with minor focus on speed maintenance.'}
+            </p>
+          </div>
+          <div class="card p-8 bg-[var(--ink)] text-white">
+            <h4 class="display font-bold mb-3 text-[var(--rust)]">Next Steps</h4>
+            <p class="text-sm opacity-80 leading-relaxed mb-4">
+              Proceed to the Visual Report to see comparative trends, or visit Recommendations for tailored cognitive exercises.
+            </p>
+            <a href="reporting.html" class="text-sm font-bold border-b border-[var(--rust)] pb-1">View Visual Report →</a>
+          </div>
+        </div>
+      `;
+
+      document.getElementById('loading-overlay').style.display = 'none';
+    }
+
+    document.addEventListener('DOMContentLoaded', fetchLatestResult);
+  </script>
+</body>
+</html>

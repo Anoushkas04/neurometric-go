@@ -1,0 +1,1377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NeuroMetric — Cognitive Assessment Suite</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --cream:       #faf7f2;
+      --paper:       #f4efe6;
+      --paper-2:     #ede6d8;
+      --paper-3:     #e0d5c0;
+      --ink:         #1a1510;
+      --ink-soft:    #3d3428;
+      --ink-muted:   #7a6e5a;
+      --rust:        #c4512a;
+      --rust-dim:    rgba(196,81,42,0.10);
+      --rust-glow:   rgba(196,81,42,0.25);
+      --amber:       #d4820a;
+      --amber-dim:   rgba(212,130,10,0.10);
+      --forest:      #2e6e46;
+      --forest-dim:  rgba(46,110,70,0.10);
+      --slate-blue:  #3b5a8a;
+      --slate-dim:   rgba(59,90,138,0.10);
+      --rose:        #b83050;
+      --rose-dim:    rgba(184,48,80,0.10);
+      --border:      rgba(100,80,40,0.14);
+      --shadow:      0 2px 40px rgba(80,50,10,0.10);
+      --font-display: 'Playfair Display', serif;
+      --font-body:    'DM Sans', sans-serif;
+      --font-mono:    'DM Mono', monospace;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: var(--font-body);
+      background: var(--cream);
+      color: var(--ink);
+      min-height: 100vh;
+      user-select: none;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none; z-index: 9999; opacity: 0.6;
+    }
+    .display { font-family: var(--font-display); }
+    .mono    { font-family: var(--font-mono); }
+    h1, h2 { font-family: var(--font-display); }
+    .card {
+      background: var(--paper);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,0.7);
+    }
+    .card-inset {
+      background: var(--paper-2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: inset 0 2px 8px rgba(80,50,10,0.06);
+    }
+    #global-hud {
+      position: fixed; top: 0; left: 0; right: 0;
+      z-index: 1000;
+      background: rgba(250,247,242,0.88);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 40px;
+      display: flex; justify-content: space-between; align-items: center;
+      transition: opacity 0.4s;
+    }
+    .hud-pill {
+      background: var(--paper-2); border: 1px solid var(--border);
+      border-radius: 30px; padding: 8px 20px;
+      font-size: 12px; font-weight: 600; letter-spacing: 0.5px;
+      display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 90px;
+    }
+    .hud-label { font-size: 9px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--ink-muted); }
+    .hud-value { font-family: var(--font-mono); font-size: 14px; font-weight: 700; color: var(--rust); }
+    .hud-logo  { font-family: var(--font-display); font-size: 18px; font-weight: 700; color: var(--ink); }
+
+    /* Firebase status pill */
+    #firebase-status-pill {
+      display: flex; align-items: center; gap: 6px;
+      background: var(--paper-2); border: 1px solid var(--border);
+      border-radius: 30px; padding: 6px 14px;
+      font-size: 11px; font-weight: 600; color: var(--ink-muted);
+      transition: all 0.4s;
+    }
+    #firebase-status-pill.connected { color: var(--forest); border-color: rgba(46,110,70,0.3); background: var(--forest-dim); }
+    #firebase-status-pill.error     { color: var(--rose);   border-color: rgba(184,48,80,0.3);  background: var(--rose-dim); }
+    #firebase-status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ink-muted); transition: background 0.4s; }
+    #firebase-status-pill.connected #firebase-status-dot { background: var(--forest); animation: pulse-ring-green 1.5s infinite; }
+    #firebase-status-pill.error     #firebase-status-dot { background: var(--rose); }
+    @keyframes pulse-ring-green {
+      0%   { box-shadow: 0 0 0 0 rgba(46,110,70,0.4); }
+      70%  { box-shadow: 0 0 0 6px rgba(46,110,70,0); }
+      100% { box-shadow: 0 0 0 0 rgba(46,110,70,0); }
+    }
+
+    #main-workspace {
+      min-height: 100vh; padding-top: 80px;
+      display: flex; align-items: center; justify-content: center;
+      padding-left: 20px; padding-right: 20px;
+    }
+    .btn-primary {
+      background: var(--ink); color: var(--cream); border: none;
+      border-radius: 12px; padding: 16px 44px;
+      font-family: var(--font-body); font-size: 14px; font-weight: 700;
+      letter-spacing: 1.5px; text-transform: uppercase; cursor: pointer;
+      transition: all 0.2s; box-shadow: 0 4px 20px rgba(26,21,16,0.2);
+    }
+    .btn-primary:hover { background: var(--rust); box-shadow: 0 8px 28px var(--rust-glow); transform: translateY(-2px); }
+    .btn-outline {
+      background: transparent; color: var(--ink); border: 2px solid var(--border);
+      border-radius: 12px; padding: 14px 32px; font-family: var(--font-body);
+      font-size: 13px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; transition: all 0.2s;
+    }
+    .btn-outline:hover { border-color: var(--rust); color: var(--rust); background: var(--rust-dim); }
+    .btn-rust {
+      background: var(--rust); color: #fff; border: none; border-radius: 12px;
+      padding: 16px 44px; font-family: var(--font-body); font-size: 14px; font-weight: 700;
+      letter-spacing: 1.5px; text-transform: uppercase; cursor: pointer;
+      transition: all 0.2s; box-shadow: 0 4px 20px var(--rust-glow);
+    }
+    .btn-rust:hover { background: #d4623a; transform: translateY(-2px); box-shadow: 0 8px 32px var(--rust-glow); }
+    .tile {
+      width: 110px; height: 110px; background: var(--paper-2);
+      border: 2px solid var(--border); border-radius: 16px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-mono); font-size: 26px; font-weight: 700; color: var(--ink-muted);
+      cursor: pointer; transition: all 0.15s;
+      box-shadow: 0 2px 8px rgba(80,50,10,0.06), inset 0 1px 0 rgba(255,255,255,0.6);
+    }
+    .tile:hover { border-color: var(--rust); color: var(--rust); }
+    .tile.active  { background: var(--rust); border-color: var(--rust); color: #fff; box-shadow: 0 0 0 4px var(--rust-dim), 0 8px 24px var(--rust-glow); transform: scale(1.08); }
+    .tile.correct { background: var(--forest); border-color: var(--forest); color: #fff; box-shadow: 0 0 0 4px var(--forest-dim); }
+    .tile.wrong   { background: var(--rose); border-color: var(--rose); color: #fff; animation: shake 0.3s ease; }
+    .pathfinder-node {
+      position: absolute; width: 52px; height: 52px;
+      background: var(--paper-2); border: 2px solid var(--border); border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-mono); font-size: 16px; font-weight: 700; color: var(--ink);
+      cursor: pointer; transform: translate(-50%, -50%); transition: all 0.15s; z-index: 20;
+      box-shadow: 0 2px 10px rgba(80,50,10,0.1), inset 0 1px 0 rgba(255,255,255,0.7);
+    }
+    .pathfinder-node:hover { border-color: var(--rust); color: var(--rust); transform: translate(-50%,-50%) scale(1.12); }
+    .pathfinder-node.completed { background: var(--ink); color: #fff; border-color: var(--ink); }
+    .pathfinder-node.error    { background: var(--rose); border-color: var(--rose); color: #fff; }
+    .attention-target {
+      position: absolute; width: 64px; height: 64px; background: var(--rust); border-radius: 50%;
+      cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 22px;
+      box-shadow: 0 4px 20px var(--rust-glow);
+      animation: target-pop 0.2s cubic-bezier(0.34,1.56,0.64,1); transition: transform 0.1s;
+    }
+    .attention-target:hover  { transform: scale(1.15); }
+    .attention-target:active { transform: scale(0.92); }
+    @keyframes target-pop { from{transform:scale(0);opacity:0} to{transform:scale(1);opacity:1} }
+    #track-container {
+      width: 100%; height: 150px;
+      background: repeating-linear-gradient(90deg,#2a2520 0px,#2a2520 22px,#1a1510 22px,#1a1510 44px);
+      position: relative; overflow: hidden; border: 3px solid var(--ink); border-radius: 12px;
+      animation: moveBelt 0.5s linear infinite; cursor: pointer;
+      box-shadow: 0 4px 24px rgba(26,21,16,0.2);
+    }
+    @keyframes moveBelt { from{background-position:0 0} to{background-position:-44px 0} }
+    #target-zone {
+      position: absolute; left: 50%; transform: translateX(-50%);
+      top: 0; width: 110px; height: 100%;
+      background: rgba(46,110,70,0.18);
+      border-left: 2px dashed var(--forest); border-right: 2px dashed var(--forest);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 9px; letter-spacing: 2px; color: var(--forest); font-weight: 700; z-index: 2;
+      transition: background 0.1s;
+    }
+    .food-item {
+      position: absolute; right: -90px; top: 50%; transform: translateY(-50%);
+      width: 80px; height: 80px; background: #2a2520; border: 2px solid #555;
+      border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 44px; z-index: 1;
+    }
+    .ticket-rail {
+      width: 100%; background: var(--paper-2); border: 1px solid var(--border);
+      border-radius: 12px; padding: 14px;
+      display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; min-height: 110px;
+    }
+    .rush-ticket {
+      background: var(--paper); border: 2px solid var(--border); border-top: 4px solid var(--rust);
+      border-radius: 8px; padding: 12px 14px; display: flex; flex-direction: column; gap: 7px;
+      animation: slideIn 0.2s ease; box-shadow: 0 2px 8px rgba(80,50,10,0.07);
+    }
+    @keyframes slideIn { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:translateY(0)} }
+    .ticket-header { font-size: 10px; color: var(--ink-muted); font-weight: 700; letter-spacing: 0.5px; }
+    .ticket-words  { font-size: 15px; font-weight: 700; color: var(--rust); line-height: 1.4; word-break: break-word; }
+    .ticket-timer  { width: 100%; height: 5px; background: var(--paper-3); border-radius: 3px; overflow: hidden; margin-top: 2px; }
+    .ticket-timer-fill { height: 100%; background: var(--forest); border-radius: 3px; transition: background 0.4s; }
+    .station-btn {
+      background: var(--paper-2); border: 2px solid var(--border); border-radius: 14px;
+      color: var(--ink); font-size: 52px; cursor: pointer;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      position: relative; gap: 6px; aspect-ratio: 1; transition: all 0.12s;
+      box-shadow: 0 2px 10px rgba(80,50,10,0.07), inset 0 1px 0 rgba(255,255,255,0.7);
+    }
+    .station-btn:hover  { border-color: var(--rust); background: var(--rust-dim); transform: translateY(-2px); }
+    .station-btn:active { transform: scale(0.94); }
+    .station-btn.hit    { border-color: var(--forest); background: var(--forest-dim); }
+    .station-btn.error  { border-color: var(--rose);   background: var(--rose-dim); }
+    .station-label      { font-size: 9px; color: var(--ink-muted); letter-spacing: 1.5px; text-transform: uppercase; font-weight: 700; }
+    .station-count {
+      position: absolute; top: 6px; right: 6px;
+      background: var(--rust); color: #fff; font-size: 11px; font-weight: 700;
+      padding: 2px 7px; border-radius: 10px; display: none;
+    }
+    .game-hud {
+      display: flex; justify-content: space-between; align-items: center; width: 100%;
+      background: var(--ink); border-radius: 14px; padding: 12px 22px; margin-bottom: 18px;
+      color: var(--cream); box-shadow: 0 4px 20px rgba(26,21,16,0.18);
+    }
+    .game-hud-label { font-size: 13px; font-weight: 600; opacity: 0.85; }
+    .game-hud-right { display: flex; align-items: center; gap: 20px; }
+    .game-hud-hits  { font-size: 13px; font-weight: 700; color: #7de8a4; font-family: var(--font-mono); }
+    .game-hud-timer { font-size: 22px; font-weight: 700; color: #f0c080; min-width: 52px; text-align: right; font-family: var(--font-mono); }
+    .game-hud-timer.urgent { color: #ff6b5a; animation: blink 0.55s step-end infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+    #stroop-display {
+      font-family: var(--font-mono); font-size: 64px; font-weight: 700; color: var(--ink);
+      letter-spacing: 8px; display: flex; align-items: center; justify-content: center;
+      flex: 1; width: 100%; transition: transform 0.07s;
+    }
+    #stroop-display.pop { transform: scale(1.05); }
+    .key-btn {
+      background: var(--paper-2); color: var(--ink); border: 2px solid var(--border);
+      border-radius: 12px; width: 78px; height: 78px;
+      font-family: var(--font-mono); font-size: 28px; font-weight: 700; cursor: pointer; transition: all 0.1s;
+      box-shadow: 0 2px 8px rgba(80,50,10,0.07), inset 0 1px 0 rgba(255,255,255,0.7);
+    }
+    .key-btn:hover  { border-color: var(--rust); color: var(--rust); background: var(--rust-dim); transform: translateY(-2px); }
+    .key-btn:active { transform: scale(0.9); }
+    .key-btn.correct { border-color: var(--forest); background: var(--forest-dim); }
+    .key-btn.wrong   { border-color: var(--rose);   background: var(--rose-dim); }
+    #toast {
+      position: fixed; bottom: 32px; left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: var(--ink); color: var(--cream); border-radius: 30px; padding: 10px 26px;
+      font-size: 13px; font-weight: 600; pointer-events: none; opacity: 0;
+      transition: all 0.2s; z-index: 9999; white-space: nowrap;
+      box-shadow: 0 8px 28px rgba(26,21,16,0.2);
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    #toast.good { background: var(--forest); }
+    #toast.bad  { background: var(--rose); }
+    @keyframes fade-in  { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes scale-in { from{opacity:0;transform:scale(0.92)} to{opacity:1;transform:scale(1)} }
+    @keyframes shake    { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }
+    @keyframes float    { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+    @keyframes pulse-ring {
+      0%  { box-shadow: 0 0 0 0 var(--rust-glow); }
+      70% { box-shadow: 0 0 0 14px rgba(196,81,42,0); }
+      100%{ box-shadow: 0 0 0 0 rgba(196,81,42,0); }
+    }
+    .fade-in  { animation: fade-in 0.35s ease both; }
+    .scale-in { animation: scale-in 0.35s cubic-bezier(0.34,1.2,0.64,1) both; }
+    .module-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: var(--paper-3); border: 1.5px solid var(--border); transition: all 0.3s;
+    }
+    .module-dot.active   { background: var(--rust); border-color: var(--rust); animation: pulse-ring 1.5s infinite; }
+    .module-dot.complete { background: var(--forest); border-color: var(--forest); }
+    .result-metric {
+      background: var(--paper-2); border: 1px solid var(--border); border-radius: 18px;
+      padding: 28px 20px; text-align: center;
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.7);
+    }
+    .result-metric-label { font-size: 9px; text-transform: uppercase; letter-spacing: 2px; color: var(--ink-muted); font-weight: 700; }
+    .result-metric-value { font-family: var(--font-display); font-size: 40px; font-weight: 700; color: var(--ink); line-height: 1; }
+    .risk-chip { display: inline-block; padding: 4px 14px; border-radius: 20px; font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+    .risk-low      { background: var(--forest-dim); color: var(--forest); }
+    .risk-moderate { background: var(--amber-dim);  color: var(--amber); }
+    .risk-high     { background: var(--rose-dim);   color: var(--rose); }
+    .module-list-item {
+      display: flex; align-items: center; gap: 16px; padding: 14px 20px;
+      background: var(--paper-2); border: 1px solid var(--border); border-radius: 12px; transition: all 0.2s;
+    }
+    .module-list-item:hover { border-color: var(--rust); transform: translateX(4px); }
+    .module-num {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: var(--ink); color: var(--cream);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 700; font-family: var(--font-mono); flex-shrink: 0;
+    }
+
+    /* Stop Button Styling */
+    #stop-btn {
+      transition: all 0.2s;
+    }
+    #stop-btn:hover {
+      background: var(--rose-dim);
+      border-color: var(--rose) !important;
+      transform: translateY(-1px);
+    }
+
+    /* Saving overlay */
+    #saving-overlay {
+      position: fixed; inset: 0;
+      background: rgba(250,247,242,0.92); backdrop-filter: blur(8px);
+      display: none; align-items: center; justify-content: center;
+      z-index: 9800; flex-direction: column; gap: 20px;
+    }
+    #saving-overlay.visible { display: flex; }
+    .saving-spinner {
+      width: 48px; height: 48px; border: 3px solid var(--paper-3);
+      border-top-color: var(--rust); border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (max-width:640px) {
+      #global-hud { padding: 12px 16px; }
+      .tile { width: 88px; height: 88px; font-size: 20px; }
+      #stroop-display { font-size: 40px; }
+      .key-btn { width: 58px; height: 58px; font-size: 20px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="global-hud">
+    <div class="hud-logo">NeuroMetric</div>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <div id="firebase-status-pill">
+        <div id="firebase-status-dot"></div>
+        <span id="firebase-status-text">Connecting…</span>
+      </div>
+      <div class="hud-pill">
+        <span class="hud-label">Module</span>
+        <span class="hud-value" id="hud-module">1/10</span>
+      </div>
+      <div class="hud-pill">
+        <span class="hud-label">Hits</span>
+        <span class="hud-value" id="hud-hits" style="color:var(--forest)">0</span>
+      </div>
+      <div class="hud-pill">
+        <span class="hud-label">Elapsed</span>
+        <span class="hud-value" id="hud-timer">0.0s</span>
+      </div>
+      <div class="hud-pill">
+        <span class="hud-label">Errors</span>
+        <span class="hud-value" id="hud-errors" style="color:var(--rose)">0</span>
+      </div>
+      <button id="stop-btn" onclick="window.location.href='dashboard.html'" class="btn-outline" style="padding: 8px 16px; font-size: 11px; border-radius: 30px; border-color: rgba(184,48,80,0.4); color: var(--rose); font-weight: 700; display: block;">Stop Assessment</button>
+    </div>
+  </div>
+
+  <div id="main-workspace"></div>
+
+  <div id="main-overlay" style="position:fixed;inset:0;background:rgba(250,247,242,0.97);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:9000;padding:20px;overflow-y:auto;"></div>
+
+  <div id="saving-overlay">
+    <div class="saving-spinner"></div>
+    <div style="font-family:var(--font-display);font-size:22px;font-weight:700;color:var(--ink);">Saving your results…</div>
+    <div style="font-size:13px;color:var(--ink-muted);">Please wait a moment</div>
+  </div>
+
+  <div id="toast"></div>
+
+  <script type="module">
+    import { SessionManager } from "./js/auth.js";
+
+    // Session Protection
+    SessionManager.checkSession().then(user => {
+        window.SessionManager = SessionManager;
+        if (!user) return; // checkSession redirects to index.html if not logged in
+
+        const statusPill = document.getElementById('firebase-status-pill');
+        const statusText = document.getElementById('firebase-status-text');
+        
+        statusPill.className = 'connected';
+        statusText.textContent = '✓ Secure (Go Backend)';
+        window._fbReady = true;
+
+        // Update profile info
+        const profile = SessionManager.getCurrentUser();
+        FirebaseLayer.testerName = profile.fullName || 'Anonymous';
+        FirebaseLayer.testerUsername = profile.username || 'offline';
+
+        // Start Assessment
+        console.log("Session verified, starting assessment...");
+        AudioEngine.init();
+        CognitiveApp.start();
+    });
+  </script>
+
+  <script>
+  /* ================================================================
+     REST API LAYER (Replacing Firebase)
+  ================================================================ */
+  const FirebaseLayer = {
+    testerName: localStorage.getItem('neuro_full_name') || 'Anonymous',
+    testerUsername: localStorage.getItem('neuro_user') || 'offline',
+    confirmName() {
+      document.getElementById('main-overlay').style.display = 'none';
+      CognitiveApp.start();
+    },
+    async saveResults(appMetrics, krStageData) {
+      document.getElementById('saving-overlay').classList.add('visible');
+      const moduleNames = {
+        1:'Tile Memory', 2:'Delayed Recall Encode', 3:'Attention Vigilance',
+        4:'Pathfinder', 5:'Recognition Memory', 6:'Spatial Reasoning',
+        7:'Clock Drawing', 8:'KR Conveyor Focus', 9:'KR Ticket Counting', 10:'KR Kitchen Rush'
+      };
+      const moduleBreakdown = {};
+      appMetrics.moduleData.forEach(m => {
+        const name = moduleNames[m.module] || `Module ${m.module}`;
+        moduleBreakdown[name] = { success: m.success, errors: m.errors, duration_ms: Math.round(m.duration), reaction_ms: Math.round(m.reactionTime || 0) };
+      });
+      const krBreakdown = {};
+      [1,2,3].forEach(i => {
+        const d = krStageData[i];
+        const tot = d.hits + d.errors;
+        krBreakdown[`stage_${i}`] = {
+          hits: d.hits, errors: d.errors, accuracy_pct: tot > 0 ? Math.round((d.hits/tot)*100) : 0,
+          duration_s: parseFloat(d.duration) || 0,
+          avg_rt_ms: d.reactionTimes.length > 0 ? Math.round(d.reactionTimes.reduce((a,b)=>a+b,0)/d.reactionTimes.length) : 0
+        };
+      });
+      const nm  = appMetrics.moduleData.length;
+      const ok  = appMetrics.moduleData.filter(m=>m.success).length;
+      const acc = nm > 0 ? Math.round((ok/nm)*100) : 0;
+      const totalTime = appMetrics.moduleDurations.reduce((a,b)=>a+b,0)/1000;
+      const avgTime   = nm > 0 ? totalTime/nm : 0;
+      const cmpScore  = Math.max(10, Math.min(100, Math.round(100-((avgTime-15)*3))));
+      const avgRT = appMetrics.reactionTimes.length > 0 ? appMetrics.reactionTimes.reduce((a,b)=>a+b,0)/appMetrics.reactionTimes.length : 0;
+      const rtScore  = Math.max(10, Math.min(100, Math.round(100-(avgRT/50))));
+      const errScore = Math.max(0,  Math.round(100-(appMetrics.errors/(nm*3))*100));
+      const overall  = Math.round(acc*0.4 + errScore*0.25 + cmpScore*0.2 + rtScore*0.15);
+      let alz='LOW', prk='LOW', dem='LOW';
+      const recallM = appMetrics.moduleData.find(m=>m.module===2);
+      const recogM  = appMetrics.moduleData.find(m=>m.module===5);
+      if ((recallM&&!recallM.success)||(recogM&&recogM.errors>2)) { alz=acc<60?'HIGH':'MODERATE'; dem='MODERATE'; }
+      const attM = appMetrics.moduleData.find(m=>m.module===3);
+      if (rtScore<50||(attM&&attM.errors>5)) prk = rtScore<40?'HIGH':'MODERATE';
+      const clkM = appMetrics.moduleData.find(m=>m.module===7);
+      const pfM  = appMetrics.moduleData.find(m=>m.module===4);
+      if ((clkM&&!clkM.success)||(pfM&&pfM.errors>3)) dem = overall<50?'HIGH':'MODERATE';
+      const payload = {
+        Overall_Score:         overall,
+        Accuracy_Percent:      acc,
+        Total_Errors:          appMetrics.errors,
+        Completion_Time_Sec:   parseFloat(totalTime.toFixed(1)),
+        Avg_Response_Time_Ms:  parseFloat(avgRT.toFixed(0)),
+        detailed_stats: JSON.stringify({
+          Risk_Alzheimers: alz, Risk_Parkinsons: prk, Risk_Dementia: dem,
+          totalModules: nm, modulesSucceeded: ok,
+          reactionTimes_ms: appMetrics.reactionTimes.map(t=>Math.round(t)),
+          moduleDurations_ms: appMetrics.moduleDurations.map(t=>Math.round(t)),
+          moduleBreakdown, kitchenRush: krBreakdown
+        })
+      };
+
+      try {
+        const response = await fetch('/api/assessments', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('neuro_token')}`
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) throw new Error("Failed to save results to Go backend");
+        console.log("Results saved to Go + SQLite successfully");
+      } catch(e) {
+        console.error('Save error:', e);
+        showToast('Error saving results', 'bad');
+      }
+      
+      document.getElementById('saving-overlay').classList.remove('visible');
+    }
+  };
+
+  /* ================================================================
+     AUDIO ENGINE
+  ================================================================ */
+  const AudioEngine = {
+    context: null, enabled: true,
+    init() { if(!this.context){ const AC=window.AudioContext||window.webkitAudioContext; this.context=new AC(); } },
+    async resume() { if(this.context&&this.context.state==='suspended') await this.context.resume(); },
+    play(freq,type,dur,vol=0.07) {
+      if(!this.enabled||!this.context) return;
+      if(this.context.state==='suspended'){ this.context.resume().catch(()=>{}); return; }
+      try {
+        const osc=this.context.createOscillator(), gain=this.context.createGain();
+        osc.type=type; osc.frequency.setValueAtTime(freq,this.context.currentTime);
+        gain.gain.setValueAtTime(0,this.context.currentTime);
+        gain.gain.linearRampToValueAtTime(vol,this.context.currentTime+0.01);
+        gain.gain.exponentialRampToValueAtTime(0.001,this.context.currentTime+dur);
+        osc.connect(gain); gain.connect(this.context.destination);
+        osc.start(); osc.stop(this.context.currentTime+dur);
+      } catch(e) {}
+    },
+    click()   { this.play(900,'sine',0.08,0.05); },
+    success() { this.play(523,'sine',0.1,0.07); setTimeout(()=>this.play(659,'sine',0.15,0.07),80); setTimeout(()=>this.play(784,'sine',0.25,0.07),160); },
+    error()   { this.play(180,'sawtooth',0.25,0.1); setTimeout(()=>this.play(140,'square',0.3,0.07),50); },
+    complete(){ this.play(523,'sine',0.12,0.08); setTimeout(()=>this.play(659,'sine',0.12,0.08),100); setTimeout(()=>this.play(784,'sine',0.12,0.08),200); setTimeout(()=>this.play(1046,'sine',0.3,0.08),300); }
+  };
+
+  /* ================================================================
+     TOAST
+  ================================================================ */
+  function showToast(msg, type='') {
+    const el=document.getElementById('toast');
+    el.textContent=msg; el.className=`show ${type}`;
+    clearTimeout(showToast._t);
+    showToast._t=setTimeout(()=>el.className='',950);
+  }
+
+  /* ================================================================
+     NEUROMETRIC CORE APP
+  ================================================================ */
+  const CognitiveApp = {
+    state:'INIT', currentModule:0, totalModules:10,
+    sessionStartTime:0, moduleStartTime:0,
+    timerInterval:null, firstInteractionTime:0,
+    metrics:{ hits:0, errors:0, moduleErrors:0, reactionTimes:[], moduleDurations:[], moduleData:[] },
+    tileSequence:[], tileUserSequence:[], recallItems:[],
+    pathfinderIndex:0, pathfinderNodes:[], pathfinderLines:[],
+    spatialAnswer:null, attentionHits:0, attentionMisses:0, clockStrokes:[],
+    transitioning: false,
+
+    init() { AudioEngine.init(); this.renderOverlay('welcome'); },
+    startGlobalClock() {
+      this.sessionStartTime=performance.now();
+      if(this.timerInterval) clearInterval(this.timerInterval);
+      this.timerInterval=setInterval(()=>{
+        const e=(performance.now()-this.sessionStartTime)/1000;
+        document.getElementById('hud-timer').textContent=e.toFixed(1)+'s';
+      },100);
+    },
+    startModuleClock() { this.moduleStartTime=performance.now(); this.firstInteractionTime=0; this.metrics.moduleErrors=0; },
+    recordInteraction() { if(!this.firstInteractionTime){ this.firstInteractionTime=performance.now()-this.moduleStartTime; this.metrics.reactionTimes.push(this.firstInteractionTime); } },
+    completeModule(ok=true) {
+      const dur=performance.now()-this.moduleStartTime;
+      this.metrics.moduleDurations.push(dur);
+      this.metrics.moduleData.push({ module:this.currentModule, success:ok, errors:this.metrics.moduleErrors, duration:dur, reactionTime:this.firstInteractionTime||dur });
+      if(ok) AudioEngine.success();
+    },
+    updateHUD() {
+      document.getElementById('hud-module').textContent=`${this.currentModule}/${this.totalModules}`;
+      document.getElementById('hud-errors').textContent=this.metrics.errors;
+      document.getElementById('hud-hits').textContent=this.metrics.hits;
+      const hud=document.getElementById('global-hud');
+      hud.style.opacity='1';
+    },
+    recordHit() { this.metrics.hits++; this.updateHUD(); },
+    recordError() { this.metrics.errors++; this.metrics.moduleErrors++; this.updateHUD(); AudioEngine.error(); },
+    start() {
+      document.getElementById('main-overlay').style.display='none';
+      this.nextModule();
+    },
+    nextModule() {
+      if(this.transitioning) return;
+      this.transitioning = true;
+      this.currentModule++; this.updateHUD();
+      if(this.currentModule>this.totalModules){ 
+        this.showResults(); 
+        this.transitioning = false;
+        return; 
+      }
+      this.startModuleClock();
+      switch(this.currentModule){
+        case 1: this.state='TILE_MEMORY';           this.renderTileMemory(); break;
+        case 2: this.state='DELAYED_RECALL_ENCODE'; this.renderDelayedRecallEncode(); break;
+        case 3: this.state='ATTENTION_VIGILANCE';   this.renderAttentionGame(); break;
+        case 4: this.state='PATHFINDER';            this.renderPathfinder(); break;
+        case 5: this.state='RECOGNITION';           this.renderRecognition(); break;
+        case 6: this.state='SPATIAL';               this.renderSpatialObserve(); break;
+        case 7: this.state='CLOCK';                 this.renderClockDrawing(); break;
+        case 8: this.state='KR_CONVEYOR';           KitchenRush.startStage(1); break;
+        case 9: this.state='KR_COUNTING';           KitchenRush.startStage(2); break;
+        case 10:this.state='KR_KITCHEN';            KitchenRush.startStage(3); break;
+      }
+      this.transitioning = false;
+    },
+    sleep(ms) { return new Promise(r=>setTimeout(r,ms)); },
+
+    renderTileMemory() {
+      document.getElementById('main-workspace').innerHTML=`
+        <div class="card max-w-3xl w-full p-10 fade-in">
+          <div class="text-center mb-8">
+            <div style="display:inline-flex;align-items:center;gap:8px;padding:6px 18px;background:var(--rust-dim);border:1px solid rgba(196,81,42,0.2);border-radius:30px;color:var(--rust);font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin-bottom:20px;">⬛ Module 1 of 10</div>
+            <h2 style="font-size:36px;margin-bottom:8px;">Tile Memory</h2>
+            <p style="color:var(--ink-muted);font-size:15px;">Watch the tiles light up, then repeat the sequence</p>
+          </div>
+          <div id="tile-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;max-width:400px;margin:0 auto 28px;">
+            ${Array(9).fill(0).map((_,i)=>`<div class="tile" data-index="${i}">${i+1}</div>`).join('')}
+          </div>
+          <div id="tile-controls" class="text-center">
+            <button onclick="CognitiveApp.startTileSequence()" class="btn-primary">Watch Sequence</button>
+          </div>
+          <div id="tile-feedback" class="text-center mt-4" style="font-size:15px;font-weight:600;min-height:24px;"></div>
+        </div>`;
+    },
+    async startTileSequence() {
+      if(!this.sessionStartTime) this.startGlobalClock(); // Start the assessment clock on first action
+      this.recordInteraction(); await AudioEngine.resume();
+      const len=4+Math.floor(Math.random()*3);
+      this.tileSequence=Array(len).fill(0).map(()=>Math.floor(Math.random()*9));
+      this.tileUserSequence=[];
+      const ctrl=document.getElementById('tile-controls');
+      ctrl.innerHTML='<p style="color:var(--rust);font-weight:700;font-family:var(--font-mono);font-size:14px;letter-spacing:1px;">WATCH CAREFULLY...</p>';
+      for(let i=0;i<this.tileSequence.length;i++){
+        await this.sleep(600);
+        const tile=document.querySelector(`.tile[data-index="${this.tileSequence[i]}"]`);
+        if(!tile) continue;
+        tile.classList.add('active'); AudioEngine.click();
+        await this.sleep(600); tile.classList.remove('active');
+      }
+      await this.sleep(500);
+      ctrl.innerHTML='<p style="color:var(--forest);font-weight:700;font-family:var(--font-mono);font-size:14px;letter-spacing:1px;">NOW REPEAT THE SEQUENCE</p>';
+      document.getElementById('tile-feedback').innerHTML='';
+      document.querySelectorAll('.tile').forEach(t=>{ t.style.cursor='pointer'; t.onclick=()=>this.handleTileClick(parseInt(t.dataset.index)); });
+    },
+    handleTileClick(idx) {
+      if(this.transitioning) return;
+      const tile=document.querySelector(`.tile[data-index="${idx}"]`);
+      this.tileUserSequence.push(idx);
+      tile.classList.add('active'); AudioEngine.click();
+      setTimeout(()=>tile.classList.remove('active'),300);
+      const step=this.tileUserSequence.length-1;
+      if(this.tileSequence[step]!==idx){
+        this.recordError(); tile.classList.add('wrong'); setTimeout(()=>tile.classList.remove('wrong'),400);
+        document.getElementById('tile-feedback').innerHTML='<span style="color:var(--rose)">✗ Wrong sequence — moving on</span>';
+        document.querySelectorAll('.tile').forEach(t=>t.onclick=null);
+        setTimeout(()=>{ this.completeModule(false); this.nextModule(); },1400); return;
+      }
+      this.recordHit();
+      if(this.tileUserSequence.length===this.tileSequence.length){
+        document.querySelectorAll('.tile').forEach(t=>{ t.classList.add('correct'); t.onclick=null; });
+        document.getElementById('tile-feedback').innerHTML='<span style="color:var(--forest)">✓ Perfect sequence!</span>';
+        setTimeout(()=>{ this.completeModule(true); this.nextModule(); },1400);
+      }
+    },
+
+    renderDelayedRecallEncode() {
+      const allItems = [
+        {word:'LION',e:'🦁'},{word:'PIANO',e:'🎹'},{word:'HAMMER',e:'🔨'},{word:'ROSE',e:'🌹'},{word:'BICYCLE',e:'🚲'},
+        {word:'CHURCH',e:'⛪'},{word:'VELVET',e:'🧶'},{word:'DAISY',e:'🌼'},{word:'TRUMPET',e:'🎺'},{word:'JACKET',e:'🧥'}
+      ];
+      this.recallItems = allItems.sort(() => 0.5 - Math.random()).slice(0, 5);
+      document.getElementById('main-workspace').innerHTML=`
+        <div class="card max-w-4xl w-full p-10 fade-in">
+          <div class="text-center mb-8">
+            <div style="display:inline-flex;align-items:center;gap:8px;padding:6px 18px;background:var(--slate-dim);border:1px solid rgba(59,90,138,0.2);border-radius:30px;color:var(--slate-blue);font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin-bottom:20px;">🧠 Module 2 of 10</div>
+            <h2 style="font-size:36px;margin-bottom:8px;">Memory Encoding</h2>
+            <p style="color:var(--ink-muted);font-size:15px;">Study these items — you'll be asked to recall them later</p>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-bottom:32px;">
+            ${this.recallItems.map((it,i)=>`<div class="card-inset p-6 text-center fade-in" style="animation-delay:${i*0.1}s">
+              <div style="font-size:52px;margin-bottom:10px;animation:float 3s ease-in-out ${i*0.2}s infinite">${it.e}</div>
+              <div class="mono" style="font-size:14px;font-weight:700;letter-spacing:1px;">${it.word}</div>
+            </div>`).join('')}
+          </div>
+          <div class="text-center">
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:2px;color:var(--ink-muted);margin-bottom:8px;">Study time remaining</div>
+            <div id="encode-timer" class="mono" style="font-size:42px;font-weight:700;color:var(--rust)">10.0s</div>
+          </div>
+        </div>`;
+      let tl=10.0; const te=document.getElementById('encode-timer');
+      const iv=setInterval(()=>{ tl-=0.1; if(tl<=0){ clearInterval(iv); this.completeModule(true); this.nextModule(); } else te.textContent=tl.toFixed(1)+'s'; },100);
+      this.recordInteraction();
+    },
+
+    renderAttentionGame() {
+      document.getElementById('main-workspace').innerHTML=`
+        <div class="card max-w-5xl w-full p-10 fade-in">
+          <div class="text-center mb-6">
+            <div style="display:inline-flex;align-items:center;gap:8px;padding:6px 18px;background:var(--amber-dim);border:1px solid rgba(212,130,10,0.2);border-radius:30px;color:var(--amber);font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin-bottom:20px;">👁 Module 3 of 10</div>
+            <h2 style="font-size:36px;margin-bottom:8px;">Attention Vigilance</h2>
+            <p style="color:var(--ink-muted);font-size:15px;">Click every target that appears — as fast as you can</p>
+          </div>
+          <div style="display:flex;justify-content:center;gap:48px;margin-bottom:20px;">
+            <div class="text-center"><div style="font-size:9px;text-transform:uppercase;letter-spacing:2px;color:var(--ink-muted);">Hits</div><div id="attention-hits" class="mono" style="font-size:32px;font-weight:700;color:var(--forest)">0</div></div>
+            <div class="text-center"><div style="font-size:9px;text-transform:uppercase;letter-spacing:2px;color:var(--ink-muted);">Time Left</div><div id="attention-timer" class="mono" style="font-size:32px;font-weight:700;color:var(--rust)">45.0s</div></div>
+          </div>
+          <div id="attention-field" style="position:relative;background:var(--paper-2);border:1px solid var(--border);border-radius:20px;height:420px;max-width:800px;margin:0 auto;overflow:hidden;"></div>
+        </div>`;
+      this.attentionHits=0; this.attentionMisses=0; this.startAttentionGame();
+    },
+    startAttentionGame() {
+      this.recordInteraction();
+      let tl=45.0; const te=document.getElementById('attention-timer'); const he=document.getElementById('attention-hits'); const field=document.getElementById('attention-field');
+      const spawn=()=>{
+        if(tl<=0) return;
+        const t=document.createElement('div'); t.className='attention-target'; t.textContent='🎯';
+        const fr=field.getBoundingClientRect();
+        t.style.left=(Math.random()*(fr.width-70))+'px'; t.style.top=(Math.random()*(fr.height-70))+'px';
+        t.onclick=()=>{ this.attentionHits++; CognitiveApp.recordHit(); he.textContent=this.attentionHits; t.remove(); AudioEngine.click(); spawn(); };
+        field.appendChild(t);
+        setTimeout(()=>{ if(t.parentElement){ t.remove(); this.attentionMisses++; spawn(); } },1800);
+      };
+      spawn(); spawn();
+      const iv=setInterval(()=>{ tl-=0.1; if(tl<=0){ clearInterval(iv); field.innerHTML=''; if(this.attentionMisses>10){ this.metrics.errors+=Math.floor(this.attentionMisses/3); this.updateHUD(); } setTimeout(()=>{ this.completeModule(true); this.nextModule(); },900); } else te.textContent=tl.toFixed(1)+'s'; },100);
+      this._attentionInterval = iv;
+    },
+
+    renderPathfinder() {
+      document.getElementById('main-workspace').innerHTML=`
+        <div class="card max-w-5xl w-full fade-in" style="overflow:hidden;">
+          <div style="padding:24px 32px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+            <div style="display:inline-flex;align-items:center;gap:8px;padding:6px 18px;background:var(--slate-dim);border:1px solid rgba(59,90,138,0.2);border-radius:30px;color:var(--slate-blue);font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;">🔗 Module 4 of 10</div>
+            <div class="mono" style="font-size:12px;color:var(--ink-muted);" id="pathfinder-instr">Connect: ...</div>
+          </div>
+          <div id="pathfinder-container" style="position:relative;background:var(--paper-2);height:520px;">
+            <canvas id="pathfinder-canvas" style="position:absolute;inset:0;pointer-events:none;z-index:10;"></canvas>
+          </div>
+        </div>`;
+      setTimeout(()=>this.initPathfinder(),100);
+    },
+    initPathfinder() {
+      this.recordInteraction();
+      const cont=document.getElementById('pathfinder-container');
+      const canvas=document.getElementById('pathfinder-canvas');
+      const rect = cont.getBoundingClientRect();
+      canvas.width = rect.width;
+      canvas.height = rect.height;
+
+      // 1. Generate Dynamic Sequence (Randomized start points)
+      const numStart = Math.floor(Math.random() * 9) + 1;
+      const charStart = 65 + Math.floor(Math.random() * 5); // A-E
+      const seq = [];
+      for(let i=0; i<6; i++) {
+        seq.push((numStart + i).toString());
+        seq.push(String.fromCharCode(charStart + i));
+      }
+      
+      document.getElementById('pathfinder-instr').innerHTML = `Connect: <strong style="color:var(--ink)">${seq.join('→')}</strong>`;
+
+      this.pathfinderIndex=0; this.pathfinderNodes=[]; this.pathfinderLines=[];
+      
+      // 2. Grid-Based Placement for Maximum Randomization/Spread
+      const cols = 4, rows = 3;
+      const cellW = canvas.width / cols, cellH = canvas.height / rows;
+      const cells = [];
+      for(let r=0; r<rows; r++) for(let c=0; c<cols; c++) cells.push({r,c});
+      
+      // Shuffle cells
+      for (let i = cells.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [cells[i], cells[j]] = [cells[j], cells[i]];
+      }
+
+      seq.forEach((lbl,idx)=>{
+        const cell = cells[idx % cells.length];
+        const pad = 40;
+        const x = (cell.c * cellW) + pad + Math.random() * (cellW - pad*2);
+        const y = (cell.r * cellH) + pad + Math.random() * (cellH - pad*2);
+
+        const node=document.createElement('div'); node.className='pathfinder-node fade-in';
+        node.textContent=lbl; node.style.left=x+'px'; node.style.top=y+'px';
+        node.style.animationDelay=(idx*0.05)+'s'; node.dataset.index=idx;
+        node.onclick=()=>this.handlePathfinderClick(idx,x,y,node);
+        cont.appendChild(node); this.pathfinderNodes.push({x,y,lbl});
+      });
+    },
+    handlePathfinderClick(idx,x,y,node) {
+      if(this.transitioning) return;
+      if(idx===this.pathfinderIndex){
+        AudioEngine.click(); node.classList.add('completed');
+        this.recordHit();
+        if(this.pathfinderIndex>0){ const p=this.pathfinderNodes[this.pathfinderIndex-1]; this.pathfinderLines.push({x1:p.x,y1:p.y,x2:x,y2:y}); this.drawPathfinderLines(); }
+        this.pathfinderIndex++;
+        if(this.pathfinderIndex===this.pathfinderNodes.length){
+          document.querySelectorAll('.pathfinder-node').forEach(n=>n.onclick=null);
+          setTimeout(()=>{ this.completeModule(true); this.nextModule(); },700);
+        }
+      } else if(!node.classList.contains('completed')){
+        this.recordError(); node.classList.add('error'); setTimeout(()=>node.classList.remove('error'),500);
+      }
+    },
+    drawPathfinderLines() {
+      const canvas=document.getElementById('pathfinder-canvas'); if(!canvas) return;
+      const ctx=canvas.getContext('2d'); ctx.clearRect(0,0,canvas.width,canvas.height);
+      this.pathfinderLines.forEach(l=>{
+        ctx.beginPath(); ctx.moveTo(l.x1,l.y1); ctx.lineTo(l.x2,l.y2);
+        ctx.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue('--rust').trim();
+        ctx.lineWidth=4; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.stroke();
+      });
+    },
+
+    renderRecognition() {
+      const correct=this.recallItems[Math.floor(Math.random()*this.recallItems.length)];
+      const distractors=[{word:'GUITAR',e:'🎸'},{word:'TREE',e:'🌳'},{word:'CLOCK',e:'🕐'},{word:'SHIP',e:'🚢'},{word:'APPLE',e:'🍎'},{word:'BIRD',e:'🐦'},{word:'LAMP',e:'💡'}].filter(x=>!this.recallItems.find(ri=>ri.word===x.word)).slice(0,3);
+      const opts=[...distractors,correct].sort(()=>Math.random()-0.5);
+      document.getElementById('main-workspace').innerHTML=`
+        <div class="card max-w-2xl w-full p-10 fade-in">
+          <div class="text-center mb-8">
+            <div style="display:inline-flex;align-items:center;gap:8px;padding:6px 18px;background:var(--forest-dim);border:1px solid rgba(46,110,70,0.2);border-radius:30px;color:var(--forest);font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin-bottom:20px;">🔍 Module 5 of 10</div>
+            <h2 style="font-size:36px;margin-bottom:8px;">Recognition Memory</h2>
+            <p style="color:var(--ink-muted);font-size:15px;">Which of these items were you shown earlier?</p>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+            ${opts.map(opt=>`<button onclick="CognitiveApp.submitRecognition('${opt.word}')" class="card-inset" style="padding:24px;display:flex;flex-direction:column;align-items:center;gap:10px;cursor:pointer;border:2px solid var(--border);border-radius:16px;transition:all 0.15s;background:var(--paper-2);" onmouseover="this.style.borderColor='var(--rust)'" onmouseout="this.style.borderColor='var(--border)'">
+              <span style="font-size:40px;">${opt.e}</span>
+              <span class="mono" style="font-size:13px;font-weight:700;">${opt.word}</span>
+            </button>`).join('')}
+          </div>
+        </div>`;
+      this.recognitionAnswer=correct.word; this.recordInteraction();
+    },
+    submitRecognition(ans) {
+      if(this.transitioning) return;
+      if(ans!==this.recognitionAnswer){ this.recordError(); this.completeModule(false); }
+      else{ this.recordHit(); this.completeModule(true); }
+      setTimeout(()=>this.nextModule(), 800);
+    },
+    renderSpatialObserve() {
+      const allShapes = [
+        {q:'How many sides does a hexagon have?',opts:['4','5','6','8'],ans:'6'},
+        {q:'Which shape has exactly 3 vertices?',opts:['Circle','Square','Triangle','Pentagon'],ans:'Triangle'},
+        {q:'A square has been rotated 45°. What shape does it look like?',opts:['Diamond','Pentagon','Rectangle','Hexagon'],ans:'Diamond'},
+        {q:'Which shape has no straight sides and no vertices?',opts:['Oval','Circle','Triangle','Square'],ans:'Circle'},
+        {q:'How many degrees are in a full circle?',opts:['180°','360°','90°','270°'],ans:'360°'},
+        {q:'Which shape has 8 sides?',opts:['Octagon','Hexagon','Pentagon','Septagon'],ans:'Octagon'}
+      ];
+      const s = allShapes[Math.floor(Math.random()*allShapes.length)];
+      this.spatialAnswer = s.ans;
+      const shuffledOpts = [...s.opts].sort(() => 0.5 - Math.random());
+      document.getElementById('main-workspace').innerHTML=`
+        <div class="card max-w-2xl w-full p-10 fade-in">
+          <div class="text-center mb-8">
+            <div style="display:inline-flex;align-items:center;gap:8px;padding:6px 18px;background:var(--rust-dim);border:1px solid rgba(196,81,42,0.2);border-radius:30px;color:var(--rust);font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin-bottom:20px;">📐 Module 6 of 10</div>
+            <h2 style="font-size:36px;margin-bottom:8px;">Spatial Reasoning</h2>
+            <p style="color:var(--ink-muted);font-size:17px;margin-top:16px;">${s.q}</p>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:8px;">
+            ${shuffledOpts.map(opt=>`<button onclick="CognitiveApp.submitSpatial('${opt}')" class="btn-outline" style="padding:18px;font-size:15px;">${opt}</button>`).join('')}
+          </div>
+        </div>`;
+      this.recordInteraction();
+    },
+    submitSpatial(ans) {
+      if(this.transitioning) return;
+      if(ans!==this.spatialAnswer){ this.recordError(); this.completeModule(false); } else{ this.recordHit(); this.completeModule(true); }
+      setTimeout(()=>this.nextModule(),800);
+    },
+
+    renderClockDrawing() {
+      const times = ['3:00', '11:10', '8:20', '4:45', '10:30', '1:15'];
+      const targetTime = times[Math.floor(Math.random() * times.length)];
+      this.targetTime = targetTime; // Store for verification
+      document.getElementById('main-workspace').innerHTML=`
+        <div class="card max-w-3xl w-full p-10 fade-in">
+          <div class="text-center mb-6">
+            <div style="display:inline-flex;align-items:center;gap:8px;padding:6px 18px;background:var(--slate-dim);border:1px solid rgba(59,90,138,0.2);border-radius:30px;color:var(--slate-blue);font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin-bottom:20px;">🕐 Module 7 of 10</div>
+            <h2 style="font-size:36px;margin-bottom:8px;">Clock Drawing</h2>
+            <p style="color:var(--ink-muted);font-size:15px;">Draw a clock face showing <strong>${targetTime}</strong></p>
+          </div>
+          <div style="display:flex;justify-content:center;margin-bottom:24px;">
+            <canvas id="clock-canvas" width="360" height="360" style="background:var(--paper-2);border:2px solid var(--border);border-radius:16px;cursor:crosshair;touch-action:none;"></canvas>
+          </div>
+          <div style="display:flex;justify-content:center;gap:12px;">
+            <button onclick="CognitiveApp.clearClock()" class="btn-outline">Clear</button>
+            <button onclick="CognitiveApp.submitClock()" class="btn-primary">Submit Drawing</button>
+          </div>
+        </div>`;
+      this.initClockCanvas();
+    },
+    initClockCanvas() {
+      this.recordInteraction();
+      const canvas=document.getElementById('clock-canvas'); const ctx=canvas.getContext('2d');
+      this.clockStrokes=[]; let drawing=false,lx=0,ly=0;
+      const pos=(e)=>{ const r=canvas.getBoundingClientRect(); const src=e.touches?e.touches[0]:e; return [src.clientX-r.left,src.clientY-r.top]; };
+      canvas.addEventListener('mousedown',e=>{ drawing=true; [lx,ly]=pos(e); });
+      canvas.addEventListener('touchstart',e=>{ e.preventDefault(); drawing=true; [lx,ly]=pos(e); });
+      canvas.addEventListener('mousemove',e=>{ if(!drawing) return; const [x,y]=pos(e); ctx.beginPath(); ctx.moveTo(lx,ly); ctx.lineTo(x,y); ctx.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue('--ink').trim(); ctx.lineWidth=2.5; ctx.lineCap='round'; ctx.stroke(); this.clockStrokes.push({x1:lx,y1:ly,x2:x,y2:y}); [lx,ly]=[x,y]; });
+      canvas.addEventListener('touchmove',e=>{ e.preventDefault(); if(!drawing) return; const [x,y]=pos(e); ctx.beginPath(); ctx.moveTo(lx,ly); ctx.lineTo(x,y); ctx.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue('--ink').trim(); ctx.lineWidth=2.5; ctx.lineCap='round'; ctx.stroke(); this.clockStrokes.push({x1:lx,y1:ly,x2:x,y2:y}); [lx,ly]=[x,y]; });
+      canvas.addEventListener('mouseup',()=>drawing=false);
+      canvas.addEventListener('touchend',()=>drawing=false);
+      canvas.addEventListener('mouseleave',()=>drawing=false);
+    },
+    clearClock() { const c=document.getElementById('clock-canvas'); c.getContext('2d').clearRect(0,0,c.width,c.height); this.clockStrokes=[]; AudioEngine.click(); },
+    submitClock() {
+      if(this.transitioning) return;
+      const canvas = document.getElementById('clock-canvas');
+      const centerX = canvas.width / 2;
+      const centerY = canvas.height / 2;
+      
+      let contourPt = 0, numbersPt = 0, handsPt = 0;
+      const strokes = this.clockStrokes;
+
+      if (strokes.length < 150) {
+        this.recordError();
+        this.completeModule(false);
+        showToast('Drawing is too incomplete', 'bad');
+        setTimeout(()=>this.nextModule(), 1200);
+        return;
+      }
+
+      // --- 1. CONTOUR ANALYSIS (MoCA Point 1) ---
+      // Check for a reasonably circular shape centered on the canvas
+      const radii = strokes.map(s => Math.hypot(s.x1 - centerX, s.y1 - centerY));
+      const avgR = radii.reduce((a,b) => a+b, 0) / radii.length;
+      const varianceR = radii.reduce((a,b) => a + Math.pow(b - avgR, 2), 0) / radii.length;
+      const stdDevR = Math.sqrt(varianceR);
+      
+      // Clinical threshold: StdDev should be low relative to size
+      if (stdDevR < avgR * 0.35 && avgR > 60) contourPt = 1;
+
+      // --- 2. NUMBERS ANALYSIS (MoCA Point 2) ---
+      // Divide the clock into 12 "hour bins" and check for ink density in the periphery
+      const hourBins = new Array(12).fill(0);
+      strokes.forEach(s => {
+        const r = Math.hypot(s.x1 - centerX, s.y1 - centerY);
+        if (r > avgR * 0.6 && r < avgR * 1.3) { // Peripheral ring
+          let angle = Math.atan2(s.y1 - centerY, s.x1 - centerX) * 180 / Math.PI + 90;
+          if (angle < 0) angle += 360;
+          const binIdx = Math.floor((angle % 360) / 30);
+          hourBins[binIdx]++;
+        }
+      });
+      // MoCA requires all numbers. We check if at least 10/12 bins have content (allowing for grouping)
+      const filledBins = hourBins.filter(count => count > 5).length;
+      if (filledBins >= 10) numbersPt = 1;
+
+      // --- 3. HANDS ANALYSIS (MoCA Point 3) ---
+      // Find two main vectors starting near the center and moving outwards
+      const handStrokes = strokes.filter(s => {
+        const rStart = Math.hypot(s.x1 - centerX, s.y1 - centerY);
+        return rStart < avgR * 0.4; // Strokes starting near center
+      });
+
+      const angles = [];
+      const lengths = [];
+
+      // Cluster strokes into two main "hands"
+      if (handStrokes.length > 20) {
+        const bins = new Array(60).fill(0);
+        const binMaxR = new Array(60).fill(0);
+
+        handStrokes.forEach(s => {
+          let angle = Math.atan2(s.y2 - centerY, s.x2 - centerX) * 180 / Math.PI + 90;
+          if (angle < 0) angle += 360;
+          const binIdx = Math.floor((angle % 360) / 6);
+          const r = Math.hypot(s.x2 - centerX, s.y2 - centerY);
+          bins[binIdx]++;
+          if (r > binMaxR[binIdx]) binMaxR[binIdx] = r;
+        });
+
+        // Find two peaks in the density
+        const peaks = [];
+        for (let i = 0; i < 60; i++) {
+          if (bins[i] > 3) {
+            if (peaks.length === 0 || Math.abs(peaks[peaks.length-1].idx - i) > 8) {
+              peaks.push({idx: i, len: binMaxR[i]});
+            }
+          }
+        }
+        peaks.sort((a,b) => b.len - a.len); // Sort by length
+
+        if (peaks.length >= 2) {
+          const minuteHand = peaks[0];
+          const hourHand = peaks[1];
+
+          // Check Relative Length (Hour hand must be shorter)
+          const lengthRatio = hourHand.len / minuteHand.len;
+          
+          // Check Angular Accuracy
+          const [hTarget, mTarget] = this.targetTime.split(':').map(Number);
+          const expectedMinBin = mTarget;
+          const expectedHourBin = Math.floor(((hTarget % 12) * 5) + (mTarget / 12));
+
+          const check = (p, target) => {
+            const diff = Math.abs(p - target);
+            return Math.min(diff, 60 - diff) <= 6; // ±36 degrees tolerance
+          };
+
+          const mMatch = check(minuteHand.idx, expectedMinBin);
+          const hMatch = check(hourHand.idx, expectedHourBin);
+
+          if (mMatch && hMatch && lengthRatio < 0.85) handsPt = 1;
+        }
+      }
+
+      const totalCDTScore = contourPt + numbersPt + handsPt;
+      console.log(`CDT MoCA Score: ${totalCDTScore}/3 (C:${contourPt} N:${numbersPt} H:${handsPt})`);
+
+      if (totalCDTScore >= 2) {
+        this.recordHit();
+        this.completeModule(true);
+        showToast(`Clock Score: ${totalCDTScore}/3`, 'good');
+      } else {
+        this.recordError();
+        this.completeModule(false);
+        const reason = totalCDTScore === 0 ? "Missing contour/hands" : "Hands or numbers misplaced";
+        showToast(`Score: ${totalCDTScore}/3 - ${reason}`, 'bad');
+      }
+      
+      // Store granular score for the detailed report
+      this.metrics.moduleData[this.metrics.moduleData.length-1].cdt_breakdown = {
+        contour: contourPt, numbers: numbersPt, hands: handsPt
+      };
+
+      setTimeout(()=>this.nextModule(), 1200);
+    },
+
+    async showResults() {
+      clearInterval(this.timerInterval); this.state='RESULTS'; this.updateHUD();
+      await FirebaseLayer.saveResults(this.metrics, KitchenRush.stageData);
+      
+      let historyComparison = "";
+      try {
+        const response = await fetch('/api/assessments', {
+          headers: { "Authorization": `Bearer ${localStorage.getItem('neuro_token')}` }
+        });
+        const assessments = await response.json();
+        
+        if (assessments && assessments.length >= 2) {
+          const current = assessments[0];
+          const prev = assessments[1];
+          const diff = current.overall_score - prev.overall_score;
+          const color = diff >= 0 ? 'var(--forest)' : 'var(--rose)';
+          const sign = diff >= 0 ? '+' : '';
+          historyComparison = `
+            <div class="card" style="padding:20px;margin-bottom:24px;border-color:${color}">
+              <div style="font-size:10px;text-transform:uppercase;letter-spacing:2px;color:var(--ink-muted);margin-bottom:8px;font-weight:700;">Progress Tracking</div>
+              <div style="display:flex;align-items:center;justify-content:space-between;">
+                <span style="font-size:14px;color:var(--ink-soft)">Compared to your last assessment:</span>
+                <span style="font-family:var(--font-display);font-size:24px;font-weight:900;color:${color}">${sign}${diff} points</span>
+              </div>
+            </div>`;
+        }
+      } catch(e) { console.error('History fetch error:', e); }
+
+      const nm=this.metrics.moduleData.length; const ok=this.metrics.moduleData.filter(m=>m.success).length;
+      const acc=Math.round((ok/nm)*100);
+      const errScore=Math.max(0,Math.round(100-(this.metrics.errors/(nm*3))*100));
+      const totalTime=this.metrics.moduleDurations.reduce((a,b)=>a+b,0)/1000;
+      const avgTime=totalTime/nm; const cmpScore=Math.max(10,Math.min(100,Math.round(100-((avgTime-15)*3))));
+      const avgRT=this.metrics.reactionTimes.reduce((a,b)=>a+b,0)/(this.metrics.reactionTimes.length||1);
+      const rtScore=Math.max(10,Math.min(100,Math.round(100-(avgRT/50))));
+      const overall=Math.round(acc*0.4+errScore*0.25+cmpScore*0.2+rtScore*0.15);
+      const krNames={1:'Conveyor Focus',2:'Ticket Counting',3:'Kitchen Rush'};
+      const krRows=[1,2,3].map(i=>{
+        const d=KitchenRush.stageData[i]; const tot=d.hits+d.errors; const a=tot>0?Math.round((d.hits/tot)*100):0;
+        const avgrt=d.reactionTimes.length>0?Math.round(d.reactionTimes.reduce((a,b)=>a+b,0)/d.reactionTimes.length):0;
+        return `<tr><td style="padding:10px 12px;">${krNames[i]}</td><td style="padding:10px 12px;color:${a>=70?'var(--forest)':'var(--rose)'};font-weight:700">${a}%</td><td style="padding:10px 12px;">${d.duration}s</td><td style="padding:10px 12px;color:${d.errors>5?'var(--rose)':'inherit'}">${d.errors}</td><td style="padding:10px 12px;">${avgrt>0?avgrt+'ms':'—'}</td></tr>`;
+      }).join('');
+      let alz='LOW',prk='LOW',dem='LOW';
+      const recallM=this.metrics.moduleData.find(m=>m.module===2);
+      const recogM=this.metrics.moduleData.find(m=>m.module===5);
+      if((recallM&&!recallM.success)||(recogM&&recogM.errors>2)){ alz=acc<60?'HIGH':'MODERATE'; dem='MODERATE'; }
+      const attM=this.metrics.moduleData.find(m=>m.module===3);
+      if(rtScore<50||(attM&&attM.errors>5)) prk=rtScore<40?'HIGH':'MODERATE';
+      const clkM=this.metrics.moduleData.find(m=>m.module===7); const pfM=this.metrics.moduleData.find(m=>m.module===4);
+      if((clkM&&!clkM.success)||(pfM&&pfM.errors>3)) dem=overall<50?'HIGH':'MODERATE';
+      const rc=(r)=>r==='LOW'?'risk-low':r==='MODERATE'?'risk-moderate':'risk-high';
+      AudioEngine.complete();
+      const ov=document.getElementById('main-overlay');
+      ov.style.display='flex';
+      ov.innerHTML=`
+        <div style="max-width:820px;width:100%;padding-bottom:40px;position:relative;" class="scale-in">
+          <div style="text-align:center;margin-bottom:36px;">
+            <div style="font-size:48px;margin-bottom:8px;">🧠</div>
+            <h1 style="font-family:var(--font-display);font-size:52px;font-weight:900;margin-bottom:8px;">Assessment Complete</h1>
+            <p style="color:var(--ink-muted);font-size:16px;">Results saved for <strong>${FirebaseLayer.testerName}</strong></p>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:28px;padding:12px 24px;background:var(--forest-dim);border:1px solid rgba(46,110,70,0.2);border-radius:30px;width:fit-content;margin-left:auto;margin-right:auto;">
+            <span style="font-size:14px;">✅</span>
+            <span style="font-size:13px;font-weight:600;color:var(--forest);">Results saved to database</span>
+          </div>
+          ${historyComparison}
+          <div style="text-align:center;margin-bottom:36px;">
+            <div style="display:inline-block;background:var(--ink);color:var(--cream);border-radius:24px;padding:32px 60px;box-shadow:0 8px 40px rgba(26,21,16,0.2);">
+              <div style="font-size:11px;text-transform:uppercase;letter-spacing:3px;opacity:0.6;margin-bottom:8px;">Overall Score</div>
+              <div style="font-family:var(--font-display);font-size:80px;font-weight:900;line-height:1;">${overall}</div>
+              <div style="font-size:11px;opacity:0.5;margin-top:6px;">out of 100</div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:28px;">
+            <div class="result-metric"><div class="result-metric-label">Accuracy</div><div class="result-metric-value">${acc}%</div></div>
+            <div class="result-metric"><div class="result-metric-label">Total Time</div><div class="result-metric-value">${totalTime.toFixed(0)}s</div></div>
+            <div class="result-metric"><div class="result-metric-label">Errors</div><div class="result-metric-value">${this.metrics.errors}</div></div>
+            <div class="result-metric"><div class="result-metric-label">Avg RT</div><div class="result-metric-value">${avgRT.toFixed(0)}ms</div></div>
+          </div>
+          <div class="card" style="padding:24px 28px;margin-bottom:24px;">
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:2px;color:var(--ink-muted);margin-bottom:16px;font-weight:700;">Cognitive Risk Indicators</div>
+            <div style="display:flex;gap:28px;flex-wrap:wrap;">
+              <div><div style="font-size:12px;color:var(--ink-muted);margin-bottom:6px;">Alzheimer's</div><span class="risk-chip ${rc(alz)}">${alz}</span></div>
+              <div><div style="font-size:12px;color:var(--ink-muted);margin-bottom:6px;">Parkinson's</div><span class="risk-chip ${rc(prk)}">${prk}</span></div>
+              <div><div style="font-size:12px;color:var(--ink-muted);margin-bottom:6px;">Dementia</div><span class="risk-chip ${rc(dem)}">${dem}</span></div>
+            </div>
+          </div>
+          <div class="card" style="padding:24px 28px;margin-bottom:28px;">
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:2px;color:var(--ink-muted);margin-bottom:16px;font-weight:700;">Kitchen Rush Stages (Modules 8–10)</div>
+            <table style="width:100%;border-collapse:collapse;font-size:13px;">
+              <thead><tr style="color:var(--rust);">
+                <th style="text-align:left;padding:8px 12px;font-size:10px;letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid var(--border);">Stage</th>
+                <th style="padding:8px 12px;font-size:10px;letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid var(--border);">Accuracy</th>
+                <th style="padding:8px 12px;font-size:10px;letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid var(--border);">Duration</th>
+                <th style="padding:8px 12px;font-size:10px;letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid var(--border);">Errors</th>
+                <th style="padding:8px 12px;font-size:10px;letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid var(--border);">Avg RT</th>
+              </tr></thead>
+              <tbody>${krRows}</tbody>
+            </table>
+          </div>
+          <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+            <button onclick="window.location.href='interpretation.html'" class="btn-primary">View Clinical Interpretation →</button>
+            <button onclick="location.reload()" class="btn-rust">Run Assessment Again</button>
+            <button onclick="SessionManager.logout()" class="btn-outline">Exit Application</button>
+          </div>
+        </div>`;
+    },
+    renderOverlay(type) {
+      const ov=document.getElementById('main-overlay');
+      if(type==='welcome'){
+        const modules=[
+          {n:1,e:'⬛',name:'Tile Memory Sequencing'},
+          {n:2,e:'🧠',name:'Delayed Recall Encoding'},
+          {n:3,e:'👁',name:'Attention Vigilance'},
+          {n:4,e:'🔗',name:'Pathfinder Network'},
+          {n:5,e:'🔍',name:'Recognition Memory'},
+          {n:6,e:'📐',name:'Spatial Reasoning'},
+          {n:7,e:'🕐',name:'Clock Drawing'},
+          {n:8,e:'🍟',name:'Conveyor Focus'},
+          {n:9,e:'🔢',name:'Ticket Counting'},
+          {n:10,e:'🍔',name:'Kitchen Rush'},
+        ];
+        ov.style.display='flex';
+        ov.innerHTML=`
+          <div style="max-width:900px;width:100%;" class="scale-in">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:start;">
+              <div>
+                <div style="font-size:10px;text-transform:uppercase;letter-spacing:3px;color:var(--rust);font-weight:700;margin-bottom:20px;">Advanced Clinical Assessment</div>
+                <h1 style="font-family:var(--font-display);font-size:68px;font-weight:900;line-height:1.0;margin-bottom:20px;">Neuro<br><span style="color:var(--rust);font-style:italic;">Metric</span></h1>
+                <p style="font-size:16px;color:var(--ink-muted);line-height:1.7;margin-bottom:32px;">A 10-module cognitive assessment platform. Measures memory, attention, executive function, and visuospatial processing — with Kitchen Rush reflex challenges.</p>
+                <div style="display:flex;gap:12px;margin-bottom:32px;flex-wrap:wrap;">
+                  <div class="card-inset" style="padding:14px 20px;text-align:center;flex:1;min-width:80px;"><div style="font-family:var(--font-display);font-size:28px;font-weight:700;color:var(--rust)">10</div><div style="font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:var(--ink-muted);">Modules</div></div>
+                  <div class="card-inset" style="padding:14px 20px;text-align:center;flex:1;min-width:80px;"><div style="font-family:var(--font-display);font-size:28px;font-weight:700;color:var(--amber)">~8</div><div style="font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:var(--ink-muted);">Minutes</div></div>
+                  <div class="card-inset" style="padding:14px 20px;text-align:center;flex:1;min-width:80px;"><div style="font-family:var(--font-display);font-size:28px;font-weight:700;color:var(--forest)">100%</div><div style="font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:var(--ink-muted);">Anonymous</div></div>
+                </div>
+                <button onclick="AudioEngine.init();AudioEngine.click();FirebaseLayer.confirmName();" class="btn-rust" style="font-size:15px;padding:18px 52px;letter-spacing:2px;">
+                  Begin Assessment →
+                </button>
+                <div class="card-inset" style="padding:16px 20px;margin-top:20px;font-size:12px;color:var(--ink-muted);line-height:1.7;">
+                  ⚠ <strong>Medical Disclaimer:</strong> This tool is for educational screening only and does not constitute medical advice. Consult a healthcare professional for diagnosis.
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:8px;">
+                <div style="font-size:10px;text-transform:uppercase;letter-spacing:2px;color:var(--ink-muted);margin-bottom:8px;font-weight:700;">All 10 Modules</div>
+                ${modules.map(m=>`
+                  <div class="module-list-item">
+                    <div class="module-num">${m.n}</div>
+                    <span style="font-size:18px;">${m.e}</span>
+                    <span style="font-size:13px;font-weight:600;">${m.name}</span>
+                    ${m.n>=8?'<span style="margin-left:auto;font-size:9px;background:var(--rust-dim);color:var(--rust);padding:2px 8px;border-radius:10px;font-weight:700;letter-spacing:1px;">NEW</span>':''}
+                  </div>`).join('')}
+              </div>
+            </div>
+          </div>`;
+      }
+    }
+  };
+
+  /* ================================================================
+     KITCHEN RUSH ENGINE
+  ================================================================ */
+  const KitchenRush = {
+    currentLevel:0, levelDuration:45, levelTimerInterval:null, timeRemaining:0,
+    stageData:{
+      1:{hits:0,errors:0,startTime:null,duration:0,reactionTimes:[]},
+      2:{hits:0,errors:0,startTime:null,duration:0,reactionTimes:[]},
+      3:{hits:0,errors:0,startTime:null,duration:0,reactionTimes:[]}
+    },
+    l1Target:'🍟', l1Pool:['🍟','🍔','🥤','🍦','🥑','🍕','🍩','🍣','🌭','🌮'],
+    l1Interval:null, l1Items:[],
+    l2Words:['ONE','TWO','THREE','FOUR','FIVE'], l2PromptStart:null, l2CorrectAnswer:null,
+    l3Tickets:[], l3TicketId:0, l3LoopInterval:null,
+    l3FoodIcons:['🍟','🥤','🍔','🍦'], l3StationCounts:{'🍟':0,'🥤':0,'🍔':0,'🍦':0},
+    startStage(lvl) { 
+      this.currentLevel=lvl; 
+      if(lvl === 1) {
+        // Randomize Target for Stage 1
+        const targets = ['🍟','🍔','🥤','🍦','🍕','🌭'];
+        this.l1Target = targets[Math.floor(Math.random() * targets.length)];
+      }
+      this.showIntro(lvl); 
+    },
+    showIntro(lvl) {
+      const targetNames = {'🍟':'Fries','🍔':'Burgers','🥤':'Drinks','🍦':'Ice Cream','🍕':'Pizza','🌭':'Hotdogs'};
+      const intros={
+        1:{mod:'8',icon:this.l1Target,title:'Conveyor Focus',desc:`Watch the conveyor belt. When the ${this.l1Target} <strong>${targetNames[this.l1Target] || 'item'}</strong> enter the <span style="color:var(--forest);font-weight:700">green catch zone</span>, press <strong>SPACEBAR</strong> or click the belt.`},
+        2:{mod:'9',icon:'🔢',title:'Ticket Counting',desc:'Count the <strong>number of words</strong> on screen — not what the words say. <span style="background:var(--rust-dim);color:var(--rust);padding:2px 8px;border-radius:4px;font-weight:700;">THREE THREE</span> = <strong>2</strong> words. Press the matching number!'},
+        3:{mod:'10',icon:'🍔',title:'Kitchen Rush',desc:'Orders appear at the top. Count the words, then tap that food station the correct number of times. Fill orders before they expire!'}
+      };
+      const d=intros[lvl];
+      document.getElementById('main-workspace').innerHTML=`
+        <div class="card max-w-xl w-full p-10 fade-in" style="text-align:center;">
+          <div style="display:inline-flex;align-items:center;gap:8px;padding:6px 18px;background:var(--rust-dim);border:1px solid rgba(196,81,42,0.2);border-radius:30px;color:var(--rust);font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin-bottom:20px;">${d.icon} Module ${d.mod} of 10</div>
+          <h2 style="font-size:40px;margin-bottom:16px;">${d.title}</h2>
+          <div class="card-inset" style="padding:24px 28px;text-align:left;margin-bottom:28px;"><p style="font-size:16px;line-height:1.8;color:var(--ink);">${d.desc}</p></div>
+          <button onclick="KitchenRush.beginStage(${lvl})" class="btn-rust">Let's Go!</button>
+        </div>`;
+    },
+    beginStage(lvl) {
+      this.currentLevel=lvl; this.timeRemaining=this.levelDuration;
+      this.stageData[lvl].startTime=performance.now();
+      this.renderGame(lvl);
+      const te=document.getElementById(`l${lvl}-timer`);
+      te.textContent=this.timeRemaining+'s'; te.classList.remove('urgent');
+      this.levelTimerInterval=setInterval(()=>{
+        this.timeRemaining--;
+        const te=document.getElementById(`l${lvl}-timer`); if(!te) return;
+        te.textContent=this.timeRemaining+'s';
+        if(this.timeRemaining<=10) te.classList.add('urgent');
+        if(this.timeRemaining<=0) this.stopStage();
+      },1000);
+      if(lvl===1) this.setupLevel1();
+      else if(lvl===2) this.setupLevel2();
+      else if(lvl===3) this.setupLevel3();
+    },
+    renderGame(lvl) {
+      const ws=document.getElementById('main-workspace');
+      if(lvl===1){
+        const targetNames = {'🍟':'fries','🍔':'burgers','🥤':'drinks','🍦':'ice cream','🍕':'pizza','🌭':'hotdogs'};
+        ws.innerHTML=`
+          <div class="card max-w-3xl w-full p-8 fade-in" style="display:flex;flex-direction:column;">
+            <div class="game-hud"><div class="game-hud-label">${this.l1Target} Catch the ${targetNames[this.l1Target] || 'items'}!</div><div class="game-hud-right"><span class="game-hud-hits" id="l1-progress">0 hits</span><span class="game-hud-timer" id="l1-timer">45s</span></div></div>
+            <div style="flex:1;">
+              <div id="track-container" onclick="KitchenRush.checkL1Capture()"><div id="target-zone"><span>CATCH</span></div></div>
+              <p style="text-align:center;color:var(--ink-muted);font-size:13px;margin-top:14px;font-weight:500;">SPACEBAR or click to catch</p>
+            </div>
+          </div>`;
+      } else if(lvl===2){
+        ws.innerHTML=`
+          <div class="card max-w-2xl w-full p-8 fade-in" style="display:flex;flex-direction:column;min-height:420px;">
+            <div class="game-hud"><div class="game-hud-label">Count the words</div><div class="game-hud-right"><span class="game-hud-hits" id="l2-progress">0 hits</span><span class="game-hud-timer" id="l2-timer">45s</span></div></div>
+            <div id="stroop-display">---</div>
+            <div style="display:flex;gap:12px;justify-content:center;padding-bottom:8px;">
+              ${[1,2,3,4,5].map(n=>`<button class="key-btn" onclick="KitchenRush.submitStroop(${n})">${n}</button>`).join('')}
+            </div>
+          </div>`;
+      } else {
+        ws.innerHTML=`
+          <div class="card max-w-3xl w-full p-8 fade-in" style="display:flex;flex-direction:column;">
+            <div class="game-hud"><div class="game-hud-label">Fill orders before they expire</div><div class="game-hud-right"><span class="game-hud-hits" id="l3-progress">0 served</span><span class="game-hud-timer" id="l3-timer">45s</span></div></div>
+            <div style="display:flex;flex-direction:column;gap:14px;flex:1;">
+              <div class="ticket-rail" id="ticket-rail"></div>
+              <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">
+                ${['🍟','🥤','🍔','🍦'].map((ic,i)=>{ const names=['FRIES','DRINK','BURGER','ICE CREAM']; return `<button class="station-btn" id="station-${ic}" onclick="KitchenRush.tapStation('${ic}')">${ic}<span class="station-label">${names[i]}</span><span class="station-count" id="count-${ic}"></span></button>`; }).join('')}
+              </div>
+            </div>
+          </div>`;
+      }
+    },
+    stopStage() {
+      clearInterval(this.levelTimerInterval);
+      if (this.currentLevel === 1 && this._l1KeyHandler) {
+        document.removeEventListener('keydown', this._l1KeyHandler);
+        this._l1KeyHandler = null;
+      }
+      if (this.currentLevel === 2 && this._l2KeyHandler) {
+        document.removeEventListener('keydown', this._l2KeyHandler);
+        this._l2KeyHandler = null;
+      }
+      const d=this.stageData[this.currentLevel];
+      d.duration=((performance.now()-d.startTime)/1000).toFixed(1);
+      if(this.l1Interval){ clearInterval(this.l1Interval); this.l1Interval=null; }
+      if(this.l3LoopInterval){ clearInterval(this.l3LoopInterval); this.l3LoopInterval=null; }
+      this.l1Items=[];
+      const lvl=this.currentLevel; const tot=d.hits+d.errors; const acc=tot>0?d.hits/tot:1;
+      CognitiveApp.metrics.moduleData.push({ module:7+lvl, success:acc>=0.5, errors:d.errors, duration:(performance.now()-d.startTime), reactionTime:d.reactionTimes[0]||5000 });
+      if(d.errors>0){ CognitiveApp.metrics.errors+=d.errors; CognitiveApp.updateHUD(); }
+      setTimeout(()=>CognitiveApp.nextModule(),400);
+    },
+    setupLevel1() {
+      this._l1KeyHandler = (e) => { if(e.code==='Space'&&this.currentLevel===1){ e.preventDefault(); this.checkL1Capture(); } };
+      document.addEventListener('keydown', this._l1KeyHandler);
+      this.spawnL1Item();
+      this.l1Interval=setInterval(()=>this.spawnL1Item(), 1000+Math.random()*500);
+    },
+    spawnL1Item() {
+      if(!document.getElementById('track-container')) return;
+      const icons = ['🍟', '🍟', '🍟', '🍟', '🍟', '🍔', '🥤', '🍦', '🥑', '🍕', '🍩', '🍣'];
+      const icon=icons[Math.floor(Math.random()*icons.length)];
+      const el=document.createElement('div'); el.className='food-item'; el.textContent=icon;
+      document.getElementById('track-container').appendChild(el);
+      const dur=2500+Math.random()*500; const startTime=performance.now();
+      const item={element:el,icon,spawnTime:startTime,done:false}; this.l1Items.push(item);
+      const anim=el.animate([{right:'-90px'},{right:'110%'}],{duration:dur,easing:'linear'});
+      anim.onfinish=()=>{ el.remove(); this.l1Items=this.l1Items.filter(x=>x!==item); };
+    },
+    checkL1Capture() {
+      if(this.currentLevel!==1) return;
+      const tc=document.getElementById('track-container'); if(!tc) return;
+      const tzRect=document.getElementById('target-zone').getBoundingClientRect();
+      const hit=this.l1Items.find(item=>{ if(item.done||!item.element.parentElement) return false; const r=item.element.getBoundingClientRect(); return r.left<tzRect.right&&r.right>tzRect.left; });
+      if(hit){
+        if(hit.icon===this.l1Target){ this.stageData[1].hits++; CognitiveApp.recordHit(); this.stageData[1].reactionTimes.push(performance.now()-hit.spawnTime); hit.element.style.opacity='0'; hit.done=true; this.flashZone('target-zone',true); showToast('Hit! ✓','good'); }
+        else{ this.stageData[1].errors++; this.flashZone('target-zone',false); showToast('Wrong item ✗','bad'); }
+      } else{ this.stageData[1].errors++; this.flashZone('target-zone',false); showToast('Nothing in zone ✗','bad'); }
+      this.updateHud(1);
+    },
+    setupLevel2() { 
+      this.nextStroopTrial(); 
+      this._l2KeyHandler = (e) => { if(this.currentLevel===2&&e.key>='1'&&e.key<='5') this.submitStroop(parseInt(e.key)); };
+      document.addEventListener('keydown', this._l2KeyHandler); 
+    },
+    nextStroopTrial() {
+      const count=Math.floor(Math.random()*5)+1; const word=this.l2Words[Math.floor(Math.random()*this.l2Words.length)];
+      const el=document.getElementById('stroop-display'); if(!el) return;
+      el.textContent=Array(count).fill(word).join('  '); el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop');
+      this.l2CorrectAnswer=count; this.l2PromptStart=performance.now();
+    },
+    submitStroop(val) {
+      if(this.currentLevel!==2) return;
+      this.stageData[2].reactionTimes.push(performance.now()-this.l2PromptStart);
+      if(val===this.l2CorrectAnswer){ this.stageData[2].hits++; CognitiveApp.recordHit(); showToast('✓ Correct!','good'); }
+      else{ this.stageData[2].errors++; showToast(`✗ Was ${this.l2CorrectAnswer}`,'bad'); }
+      this.updateHud(2); this.nextStroopTrial();
+    },
+    setupLevel3() {
+      this.l3Tickets=[]; this.l3StationCounts={'🍟':0,'🥤':0,'🍔':0,'🍦':0};
+      this.l3FoodIcons.forEach(i=>this.hideCount(i));
+      document.getElementById('ticket-rail').innerHTML='';
+      this.updateHud(3);
+      this.l3LoopInterval=setInterval(()=>this.tickKitchen(),100);
+      this.spawnTicket(); setTimeout(()=>this.spawnTicket(),2000);
+    },
+    spawnTicket() {
+      if(this.l3Tickets.length>=3||this.currentLevel!==3) return;
+      const icon=this.l3FoodIcons[Math.floor(Math.random()*this.l3FoodIcons.length)];
+      const count=Math.floor(Math.random()*3)+1;
+      const word=this.l2Words[Math.floor(Math.random()*this.l2Words.length)];
+      this.l3Tickets.push({id:this.l3TicketId++,icon,requiredCount:count,textDisplay:Array(count).fill(word).join(' '),patience:100,decay:0.25+Math.random()*0.15,spawnTime:performance.now()});
+      this.renderTickets();
+    },
+    renderTickets() {
+      const rail=document.getElementById('ticket-rail'); if(!rail) return;
+      rail.innerHTML='';
+      this.l3Tickets.forEach(t=>{ 
+        const div=document.createElement('div'); 
+        div.className='rush-ticket'; 
+        div.innerHTML=`<div class="ticket-header" style="display: flex; align-items: center;"><span style="font-size: 34px; line-height: 1; margin-right: 8px;">${t.icon}</span> Order #${t.id+1}</div><div class="ticket-words">${t.textDisplay}</div><div class="ticket-timer"><div class="ticket-timer-fill" id="t-fill-${t.id}" style="width:${t.patience}%"></div></div>`; 
+        rail.appendChild(div); 
+      });
+    },
+    tickKitchen() {
+      if(this.currentLevel!==3) return;
+      if(Math.random()<0.025&&this.l3Tickets.length<3) this.spawnTicket();
+      let changed=false;
+      this.l3Tickets.forEach(t=>{ t.patience-=t.decay; const fill=document.getElementById(`t-fill-${t.id}`); if(fill){ fill.style.width=`${Math.max(0,t.patience)}%`; fill.style.background=t.patience<30?'var(--rose)':t.patience<60?'var(--amber)':'var(--forest)'; } if(t.patience<=0){ this.stageData[3].errors++; showToast('Order expired ⏰','bad'); this.l3Tickets=this.l3Tickets.filter(x=>x.id!==t.id); changed=true; } });
+      if(changed) this.renderTickets();
+    },
+    tapStation(icon) {
+      if(this.currentLevel!==3) return;
+      this.l3StationCounts[icon]++;
+      this.showCount(icon,this.l3StationCounts[icon]);
+      const btn=document.getElementById(`station-${icon}`); this.flashBtn(btn,'hit');
+      const matchIdx=this.l3Tickets.findIndex(t=>t.icon===icon&&t.requiredCount===this.l3StationCounts[icon]);
+      if(matchIdx!==-1){ this.stageData[3].hits++; CognitiveApp.recordHit(); this.stageData[3].reactionTimes.push(performance.now()-this.l3Tickets[matchIdx].spawnTime); this.l3Tickets.splice(matchIdx,1); this.l3StationCounts[icon]=0; this.hideCount(icon); showToast('Served! 🎉','good'); this.updateHud(3); this.renderTickets(); setTimeout(()=>this.spawnTicket(),800); }
+      else{ const active=this.l3Tickets.find(t=>t.icon===icon); if(active&&this.l3StationCounts[icon]>active.requiredCount){ this.stageData[3].errors++; this.l3StationCounts[icon]=0; this.hideCount(icon); this.flashBtn(btn,'error'); showToast('Too many taps ✗','bad'); } }
+    },
+    showCount(icon,n){ const el=document.getElementById(`count-${icon}`); if(el){ el.textContent=n; el.style.display='block'; } },
+    hideCount(icon)  { const el=document.getElementById(`count-${icon}`); if(el) el.style.display='none'; },
+    updateHud(lvl) { const d=this.stageData[lvl]; const labels={1:'hits',2:'hits',3:'served'}; const el=document.getElementById(`l${lvl}-progress`); if(el) el.textContent=`${d.hits} ${labels[lvl]}`; },
+    flashZone(id,good){ const z=document.getElementById(id); if(!z) return; z.style.backgroundColor=good?'rgba(46,110,70,0.35)':'rgba(184,48,80,0.35)'; setTimeout(()=>z.style.backgroundColor='',160); },
+    flashBtn(el,cls){ if(!el) return; el.classList.add(cls); setTimeout(()=>el.classList.remove(cls),220); }
+  };
+  document.addEventListener('DOMContentLoaded', ()=>CognitiveApp.init());
+  </script>
+</body>
+</html>

@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NeuroMetric — Portal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --cream:       #faf7f2;
+      --paper:       #f4efe6;
+      --paper-2:     #ede6d8;
+      --paper-3:     #e0d5c0;
+      --ink:         #1a1510;
+      --ink-soft:    #3d3428;
+      --ink-muted:   #7a6e5a;
+      --rust:        #c4512a;
+      --rust-dim:    rgba(196,81,42,0.10);
+      --forest:      #2e6e46;
+      --forest-dim:  rgba(46,110,70,0.10);
+      --border:      rgba(100,80,40,0.14);
+      --font-display: 'Playfair Display', serif;
+      --font-body:    'DM Sans', sans-serif;
+    }
+    body {
+      font-family: var(--font-body);
+      background: var(--cream);
+      color: var(--ink);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .display { font-family: var(--font-display); }
+    .card {
+      background: var(--paper);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      box-shadow: 0 10px 40px rgba(80,50,10,0.08);
+      max-width: 500px;
+      width: 100%;
+      padding: 48px;
+    }
+    .input-field {
+      width: 100%;
+      background: var(--paper-2);
+      border: 1px solid var(--border);
+      padding: 14px 18px;
+      border-radius: 12px;
+      font-size: 15px;
+      margin-bottom: 20px;
+      outline: none;
+      transition: all 0.2s;
+    }
+    .input-field:focus {
+      border-color: var(--rust);
+      background: white;
+    }
+    .btn-rust {
+      background: var(--rust);
+      color: white;
+      width: 100%;
+      padding: 16px;
+      border-radius: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      transition: all 0.2s;
+      margin-top: 10px;
+    }
+    .btn-rust:hover:not(:disabled) {
+      transform: translateY(-2px);
+      filter: brightness(1.1);
+    }
+    .btn-rust:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .step { display: none; }
+    .step.active { display: block; animation: fadeIn 0.4s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    
+    .disclaimer-box {
+      background: var(--rust-dim);
+      border-left: 4px solid var(--rust);
+      padding: 16px;
+      border-radius: 0 8px 8px 0;
+      margin-bottom: 24px;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .password-hint {
+      font-size: 11px;
+      color: var(--ink-muted);
+      margin-top: -15px;
+      margin-bottom: 15px;
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 12px;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--ink-muted);
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+    }
+    .tab-btn.active {
+      color: var(--rust);
+      border-bottom-color: var(--rust);
+    }
+
+    #logout-btn {
+      position: fixed;
+      top: 24px;
+      right: 24px;
+      z-index: 10000;
+      background: var(--paper-2);
+      border: 1px solid var(--border);
+      padding: 8px 20px;
+      border-radius: 30px;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--ink-soft);
+      transition: all 0.2s;
+      display: none;
+    }
+    #logout-btn:hover {
+      background: var(--paper-3);
+      color: var(--rust);
+    }
+  </style>
+</head>
+<body>
+
+  <button id="logout-btn" onclick="SessionManager.logout()">Logout</button>
+
+  <div class="card">
+    <div class="text-center mb-10">
+      <div class="display text-3xl font-bold mb-2">Neuro<span class="text-[var(--rust)] italic">Metric</span></div>
+      <div class="text-[var(--ink-muted)] text-sm tracking-widest uppercase font-bold" id="step-label">Patient Portal</div>
+    </div>
+
+    <div id="auth-tabs" class="flex mb-8">
+      <button onclick="toggleAuth('register')" id="tab-reg" class="tab-btn active">Register</button>
+      <button onclick="toggleAuth('signin')" id="tab-sign" class="tab-btn">Sign In</button>
+    </div>
+
+    <!-- Step 1: Registration -->
+    <div id="step-1" class="step active">
+      <input type="text" id="reg-name" class="input-field" placeholder="Full Name">
+      <input type="number" id="reg-age" class="input-field" placeholder="Age">
+      <select id="reg-gender" class="input-field">
+        <option value="" disabled selected>Select Gender</option>
+        <option value="male">Male</option>
+        <option value="female">Female</option>
+        <option value="other">Other</option>
+      </select>
+      <button onclick="nextStep(2)" class="btn-rust">Continue →</button>
+    </div>
+
+    <!-- Step 2: Password Security -->
+    <div id="step-2" class="step">
+      <div class="text-sm font-bold mb-4">Secure your account</div>
+      <input type="text" id="reg-username" class="input-field" placeholder="Choose a Unique Username">
+      <input type="password" id="reg-pass" class="input-field" placeholder="Create Password" oninput="checkPassword()">
+      <div class="password-hint" id="pass-hint">Minimum 8 characters, including 1 number.</div>
+      <input type="password" id="reg-confirm" class="input-field" placeholder="Confirm Password">
+      <button id="btn-sec" onclick="saveUserAndNext()" class="btn-rust" disabled>Complete Registration</button>
+      <button onclick="nextStep(1)" class="text-xs text-[var(--ink-muted)] mt-4 block mx-auto hover:underline">Go Back</button>
+    </div>
+
+    <!-- Step: Sign In -->
+    <div id="step-signin" class="step">
+      <input type="text" id="sign-username" class="input-field" placeholder="Username">
+      <input type="password" id="sign-pass" class="input-field" placeholder="Password">
+      <button onclick="handleSignIn()" class="btn-rust">Sign In →</button>
+    </div>
+  </div>
+
+  <script type="module">
+    import { SessionManager } from "./js/auth.js";
+    window.SessionManager = SessionManager;
+
+    console.log("Stage 1 Loaded. checking session...");
+
+    // Initialize session check
+    SessionManager.checkSession(false).then(user => {
+      if (user) {
+        console.log("User detected, redirecting to dashboard...");
+        window.location.replace('dashboard.html');
+      }
+    });
+
+    window.toggleAuth = (mode) => {
+      document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+      document.getElementById('tab-reg').classList.remove('active');
+      document.getElementById('tab-sign').classList.remove('active');
+      
+      if (mode === 'register') {
+        document.getElementById('step-1').classList.add('active');
+        document.getElementById('tab-reg').classList.add('active');
+      } else {
+        document.getElementById('step-signin').classList.add('active');
+        document.getElementById('tab-sign').classList.add('active');
+      }
+    };
+
+    window.nextStep = (n) => {
+      document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+      document.getElementById(`step-${n}`).classList.add('active');
+    };
+
+    window.checkPassword = () => {
+      const pass = document.getElementById('reg-pass').value;
+      const hasNumber = /\d/.test(pass);
+      const isLongEnough = pass.length >= 8;
+      const btn = document.getElementById('btn-sec');
+      
+      if (hasNumber && isLongEnough) {
+        btn.disabled = false;
+        document.getElementById('pass-hint').style.color = 'var(--forest)';
+      } else {
+        btn.disabled = true;
+        document.getElementById('pass-hint').style.color = 'var(--rose)';
+      }
+    };
+
+    window.saveUserAndNext = async () => {
+      const pass = document.getElementById('reg-pass').value;
+      const conf = document.getElementById('reg-confirm').value;
+      const username = document.getElementById('reg-username').value.trim().toLowerCase();
+      
+      if (!username) { alert("Please enter a username."); return; }
+      if (pass !== conf) { alert("Passwords do not match!"); return; }
+
+      try {
+        const userData = {
+          fullName: document.getElementById('reg-name').value,
+          age: document.getElementById('reg-age').value,
+          gender: document.getElementById('reg-gender').value
+        };
+
+        console.log("Registering user:", username);
+        await SessionManager.register(username, pass, userData);
+        console.log("Registration successful, redirecting...");
+        window.location.replace('dashboard.html');
+      } catch (e) {
+        console.error(e);
+        if (e.code === 'auth/email-already-in-use') {
+            alert("Username already taken. Please choose another.");
+        } else {
+            alert("Error creating account: " + e.message);
+        }
+      }
+    };
+
+    window.handleSignIn = async () => {
+      const user = document.getElementById('sign-username').value.trim().toLowerCase();
+      const pass = document.getElementById('sign-pass').value;
+      
+      if (!user || !pass) {
+        alert("Please enter both username and password.");
+        return;
+      }
+
+      try {
+        console.log("Signing in user:", user);
+        await SessionManager.signIn(user, pass);
+        console.log("Sign-in successful, redirecting...");
+        window.location.replace('dashboard.html');
+      } catch (e) {
+        console.error("Sign-in error details:", e);
+        if (e.code === 'auth/user-not-found' || e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential') {
+          alert("Invalid username or password. If you created your account recently, please ensure you used the correct credentials. (Note: Accounts created before today may need to be re-registered).");
+        } else if (e.code === 'auth/operation-not-allowed') {
+          alert("Sign-in error: Email/Password provider is not enabled in Firebase Console. Please enable it in the Auth section.");
+        } else {
+          alert("Sign-in error: " + e.message);
+        }
+      }
+    };
+  </script>
+</body>
+</html>

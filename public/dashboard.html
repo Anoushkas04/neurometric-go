@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NeuroMetric — Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --cream:       #faf7f2;
+      --paper:       #f4efe6;
+      --paper-2:     #ede6d8;
+      --paper-3:     #e0d5c0;
+      --ink:         #1a1510;
+      --ink-soft:    #3d3428;
+      --ink-muted:   #7a6e5a;
+      --rust:        #c4512a;
+      --rust-dim:    rgba(196,81,42,0.10);
+      --amber:       #d4820a;
+      --forest:      #2e6e46;
+      --border:      rgba(100,80,40,0.14);
+      --font-display: 'Playfair Display', serif;
+      --font-body:    'DM Sans', sans-serif;
+    }
+    body {
+      font-family: var(--font-body);
+      background: var(--cream);
+      color: var(--ink);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px;
+    }
+    .display { font-family: var(--font-display); }
+    .card {
+      background: var(--paper);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      box-shadow: 0 10px 40px rgba(80,50,10,0.08);
+    }
+    .card-inset {
+      background: var(--paper-2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: inset 0 2px 8px rgba(80,50,10,0.06);
+    }
+    .btn-rust {
+      background: var(--rust);
+      color: white;
+      padding: 18px 52px;
+      border-radius: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      transition: all 0.2s;
+      cursor: pointer;
+    }
+    .btn-rust:hover:not(:disabled) {
+      transform: translateY(-2px);
+      filter: brightness(1.1);
+    }
+    .btn-rust:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+    .module-list-item {
+      display: flex; align-items: center; gap: 16px; padding: 14px 20px;
+      background: var(--paper-2); border: 1px solid var(--border); border-radius: 12px; transition: all 0.2s;
+    }
+    .module-num {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: var(--ink); color: var(--cream);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 700; flex-shrink: 0;
+    }
+    #logout-btn {
+      position: fixed;
+      top: 24px;
+      right: 24px;
+      z-index: 10000;
+      background: var(--paper-2);
+      border: 1px solid var(--border);
+      padding: 8px 20px;
+      border-radius: 30px;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--ink-soft);
+      transition: all 0.2s;
+    }
+    #logout-btn:hover {
+      background: var(--paper-3);
+      color: var(--rust);
+    }
+    .scale-in { animation: scale-in 0.35s cubic-bezier(0.34,1.2,0.64,1) both; }
+    @keyframes scale-in { from{opacity:0;transform:scale(0.92)} to{opacity:1;transform:scale(1)} }
+
+    .step { display: none; }
+    .step.active { display: block; }
+    
+    .disclaimer-box {
+      background: var(--rust-dim);
+      border-left: 4px solid var(--rust);
+      padding: 24px;
+      border-radius: 0 12px 12px 0;
+      margin-bottom: 32px;
+      font-size: 15px;
+      line-height: 1.8;
+      color: var(--ink-soft);
+    }
+  </style>
+</head>
+<body>
+
+  <button id="logout-btn" onclick="SessionManager.logout()">Logout</button>
+
+  <div class="card p-12 max-w-5xl w-full scale-in">
+    <!-- Step 1: Overview -->
+    <div id="dashboard-step-1" class="step active">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:start;">
+        <div>
+          <div style="font-size:10px;text-transform:uppercase;letter-spacing:3px;color:var(--rust);font-weight:700;margin-bottom:20px;">Advanced Clinical Assessment</div>
+          <h1 class="display text-6xl font-black leading-tight mb-6">Neuro<br><span style="color:var(--rust);font-style:italic;">Metric</span></h1>
+          <p style="font-size:16px;color:var(--ink-muted);line-height:1.7;margin-bottom:32px;">Welcome back. You are about to begin a 10-module cognitive assessment platform measuring memory, attention, executive function, and visuospatial processing.</p>
+          
+          <div style="display:flex;gap:12px;margin-bottom:32px;flex-wrap:wrap;">
+            <div class="card-inset" style="padding:14px 20px;text-align:center;flex:1;min-width:80px;"><div class="display text-3xl font-bold text-[var(--rust)]">10</div><div style="font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:var(--ink-muted);">Modules</div></div>
+            <div class="card-inset" style="padding:14px 20px;text-align:center;flex:1;min-width:80px;"><div class="display text-3xl font-bold text-[var(--amber)]">~8</div><div style="font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:var(--ink-muted);">Minutes</div></div>
+            <div class="card-inset" style="padding:14px 20px;text-align:center;flex:1;min-width:80px;"><div class="display text-3xl font-bold text-[var(--forest)]">100%</div><div style="font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:var(--ink-muted);">Secure</div></div>
+          </div>
+
+          <div id="latest-score-card" style="display:none;" class="card-inset p-6 mb-8 border-l-4 border-[var(--rust)]">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <div>
+                <div style="font-size:10px;text-transform:uppercase;letter-spacing:2px;color:var(--ink-muted);margin-bottom:4px;font-weight:700;">Latest Assessment</div>
+                <div style="font-size:12px;color:var(--ink-soft);" id="latest-date">---</div>
+              </div>
+              <div class="text-right">
+                <div class="display text-4xl font-black text-[var(--rust)]" id="latest-score">0</div>
+                <div style="font-size:10px;color:var(--ink-muted);font-weight:700;">POINTS</div>
+              </div>
+            </div>
+            <a href="interpretation.html" class="text-xs text-[var(--rust)] font-bold mt-4 inline-block hover:underline">View Clinical Report →</a>
+          </div>
+
+          <div class="flex gap-4">
+            <button onclick="showStep(2)" class="btn-rust flex-1">
+              Start New Assessment →
+            </button>
+            <button id="view-report-btn" onclick="window.location.href='reporting.html'" class="flex-1 py-4 rounded-xl font-bold text-sm uppercase tracking-wider text-[var(--ink-muted)] border border-[var(--border)] hover:bg-[var(--paper-2)] transition-all" style="display:none;">
+              View Progress History
+            </button>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div style="font-size:10px;text-transform:uppercase;letter-spacing:2px;color:var(--ink-muted);margin-bottom:8px;font-weight:700;">Assessment Overview</div>
+          <div id="module-list" style="display:flex;flex-direction:column;gap:8px;">
+            <!-- Modules will be injected here -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 2: Medical Disclaimer -->
+    <div id="dashboard-step-2" class="step">
+      <div style="max-width: 600px; margin: 0 auto;">
+        <div class="display text-3xl font-bold mb-6 text-center">Medical Disclaimer</div>
+        <div class="disclaimer-box">
+          <strong>Important:</strong> This platform is a cognitive assessment screening tool. It is <strong>not for diagnostic purposes</strong> and does not replace a clinical evaluation by a medical professional. All results are indicative and should be discussed with a doctor.
+        </div>
+        
+        <label class="flex items-start gap-4 cursor-pointer mb-10 group">
+          <div class="mt-1">
+            <input type="checkbox" id="disclaimer-check" class="w-5 h-5 accent-[var(--rust)]" onchange="toggleDisclaimer()">
+          </div>
+          <span class="text-sm leading-relaxed text-[var(--ink-soft)] group-hover:text-[var(--ink)] transition-colors">
+            I understand that this is an assessment tool only and not a substitute for professional medical advice, diagnosis, or treatment.
+          </span>
+        </label>
+
+        <div class="flex gap-4">
+          <button onclick="showStep(1)" class="flex-1 py-4 rounded-xl font-bold text-sm uppercase tracking-wider text-[var(--ink-muted)] hover:bg-[var(--paper-2)] transition-all">Go Back</button>
+          <button id="btn-start" onclick="startAssessment()" class="flex-[2] btn-rust !mt-0" disabled>Start Clinical Test →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { SessionManager } from "./js/auth.js";
+    window.SessionManager = SessionManager;
+
+    console.log("Dashboard loaded.");
+    SessionManager.checkSession().then(user => {
+        if (!user) return;
+        fetchLatestStats();
+    });
+
+    async function fetchLatestStats() {
+        try {
+            const response = await fetch('/api/assessments', {
+                headers: { "Authorization": `Bearer ${localStorage.getItem('neuro_token')}` }
+            });
+            const assessments = await response.json();
+            
+            if (assessments && assessments.length > 0) {
+                const latest = assessments[0];
+                document.getElementById('latest-score-card').style.display = 'block';
+                document.getElementById('view-report-btn').style.display = 'block';
+                document.getElementById('latest-score').textContent = latest.overall_score;
+                document.getElementById('latest-date').textContent = new Date(latest.created_at).toLocaleDateString(undefined, { 
+                    year: 'numeric', month: 'long', day: 'numeric' 
+                });
+            }
+        } catch (e) {
+            console.error("Failed to fetch dashboard stats:", e);
+        }
+    }
+
+    window.showStep = (n) => {
+        document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+        document.getElementById(`dashboard-step-${n}`).classList.add('active');
+    };
+
+    window.toggleDisclaimer = () => {
+        const checked = document.getElementById('disclaimer-check').checked;
+        document.getElementById('btn-start').disabled = !checked;
+    };
+
+    window.startAssessment = () => {
+        window.location.href = 'merged_games.html';
+    };
+
+    const modules = [
+      {n:1,e:'⬛',name:'Tile Memory Sequencing'},
+      {n:2,e:'🧠',name:'Delayed Recall Encoding'},
+      {n:3,e:'👁',name:'Attention Vigilance'},
+      {n:4,e:'🔗',name:'Pathfinder Network'},
+      {n:5,e:'🔍',name:'Recognition Memory'},
+      {n:6,e:'📐',name:'Spatial Reasoning'},
+      {n:7,e:'🕐',name:'Clock Drawing'},
+      {n:8,e:'🍟',name:'Conveyor Focus'},
+      {n:9,e:'🔢',name:'Ticket Counting'},
+      {n:10,e:'🍔',name:'Kitchen Rush'},
+    ];
+
+    document.getElementById('module-list').innerHTML = modules.map(m => `
+      <div class="module-list-item">
+        <div class="module-num">${m.n}</div>
+        <span style="font-size:18px;">${m.e}</span>
+        <span style="font-size:13px;font-weight:600;">${m.name}</span>
+        ${m.n>=8 ? '<span style="margin-left:auto;font-size:9px;background:var(--rust-dim);color:var(--rust);padding:2px 8px;border-radius:10px;font-weight:700;letter-spacing:1px;">NEW</span>' : ''}
+      </div>
+    `).join('');
+  </script>
+</body>
+</html>
