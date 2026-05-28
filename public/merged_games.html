@@ -1169,18 +1169,22 @@
   /* ================================================================
      KITCHEN RUSH ENGINE
   ================================================================ */
-  const KitchenRush = {
+const KitchenRush = {
     currentLevel:0, levelDuration:45, levelTimerInterval:null, timeRemaining:0,
     stageData:{
       1:{hits:0,errors:0,startTime:null,duration:0,reactionTimes:[]},
       2:{hits:0,errors:0,startTime:null,duration:0,reactionTimes:[]},
       3:{hits:0,errors:0,startTime:null,duration:0,reactionTimes:[]}
     },
-    l1Target:'🍟', l1Pool:['🍟','🍔','🥤','🍦','🥑','🍕','🍩','🍣','🌭','🌮'],
+    l1Target:'🍟', 
+    l1Pool:['🍟','🍔','🥤','🍦','🥑','🍕','🍩','🍣','🌭','🌮'],
+    // Centralized names so intro and HUD always match
+    targetNames: {'🍟':'Fries','🍔':'Burgers','🥤':'Drinks','🍦':'Ice Cream','🍕':'Pizza','🌭':'Hotdogs', '🍣':'Sushi', '🥑':'Avocados', '🍩':'Donuts', '🌮':'Tacos'},
     l1Interval:null, l1Items:[],
     l2Words:['ONE','TWO','THREE','FOUR','FIVE'], l2PromptStart:null, l2CorrectAnswer:null,
     l3Tickets:[], l3TicketId:0, l3LoopInterval:null,
     l3FoodIcons:['🍟','🥤','🍔','🍦'], l3StationCounts:{'🍟':0,'🥤':0,'🍔':0,'🍦':0},
+    
     startStage(lvl) { 
       this.currentLevel=lvl; 
       if(lvl === 1) {
@@ -1190,10 +1194,10 @@
       }
       this.showIntro(lvl); 
     },
+    
     showIntro(lvl) {
-      const targetNames = {'🍟':'Fries','🍔':'Burgers','🥤':'Drinks','🍦':'Ice Cream','🍕':'Pizza','🌭':'Hotdogs'};
       const intros={
-        1:{mod:'8',icon:this.l1Target,title:'Conveyor Focus',desc:`Watch the conveyor belt. When the ${this.l1Target} <strong>${targetNames[this.l1Target] || 'item'}</strong> enter the <span style="color:var(--forest);font-weight:700">green catch zone</span>, press <strong>SPACEBAR</strong> or click the belt.`},
+        1:{mod:'8',icon:this.l1Target,title:'Conveyor Focus',desc:`Watch the conveyor belt. When the ${this.l1Target} <strong>${this.targetNames[this.l1Target] || 'item'}</strong> enter the <span style="color:var(--forest);font-weight:700">green catch zone</span>, press <strong>SPACEBAR</strong> or click the belt.`},
         2:{mod:'9',icon:'🔢',title:'Ticket Counting',desc:'Count the <strong>number of words</strong> on screen — not what the words say. <span style="background:var(--rust-dim);color:var(--rust);padding:2px 8px;border-radius:4px;font-weight:700;">THREE THREE</span> = <strong>2</strong> words. Press the matching number!'},
         3:{mod:'10',icon:'🍔',title:'Kitchen Rush',desc:'Orders appear at the top. Count the words, then tap that food station the correct number of times. Fill orders before they expire!'}
       };
@@ -1206,6 +1210,7 @@
           <button onclick="KitchenRush.beginStage(${lvl})" class="btn-rust">Let's Go!</button>
         </div>`;
     },
+    
     beginStage(lvl) {
       this.currentLevel=lvl; this.timeRemaining=this.levelDuration;
       this.stageData[lvl].startTime=performance.now();
@@ -1223,13 +1228,13 @@
       else if(lvl===2) this.setupLevel2();
       else if(lvl===3) this.setupLevel3();
     },
+    
     renderGame(lvl) {
       const ws=document.getElementById('main-workspace');
       if(lvl===1){
-        const targetNames = {'🍟':'fries','🍔':'burgers','🥤':'drinks','🍦':'ice cream','🍕':'pizza','🌭':'hotdogs'};
         ws.innerHTML=`
           <div class="card max-w-3xl w-full p-8 fade-in" style="display:flex;flex-direction:column;">
-            <div class="game-hud"><div class="game-hud-label">${this.l1Target} Catch the ${targetNames[this.l1Target] || 'items'}!</div><div class="game-hud-right"><span class="game-hud-hits" id="l1-progress">0 hits</span><span class="game-hud-timer" id="l1-timer">45s</span></div></div>
+            <div class="game-hud"><div class="game-hud-label">${this.l1Target} Catch the ${this.targetNames[this.l1Target] || 'items'}!</div><div class="game-hud-right"><span class="game-hud-hits" id="l1-progress">0 hits</span><span class="game-hud-timer" id="l1-timer">45s</span></div></div>
             <div style="flex:1;">
               <div id="track-container" onclick="KitchenRush.checkL1Capture()"><div id="target-zone"><span>CATCH</span></div></div>
               <p style="text-align:center;color:var(--ink-muted);font-size:13px;margin-top:14px;font-weight:500;">SPACEBAR or click to catch</p>
@@ -1257,6 +1262,7 @@
           </div>`;
       }
     },
+    
     stopStage() {
       clearInterval(this.levelTimerInterval);
       if (this.currentLevel === 1 && this._l1KeyHandler) {
@@ -1277,16 +1283,27 @@
       if(d.errors>0){ CognitiveApp.metrics.errors+=d.errors; CognitiveApp.updateHUD(); }
       setTimeout(()=>CognitiveApp.nextModule(),400);
     },
+    
     setupLevel1() {
       this._l1KeyHandler = (e) => { if(e.code==='Space'&&this.currentLevel===1){ e.preventDefault(); this.checkL1Capture(); } };
       document.addEventListener('keydown', this._l1KeyHandler);
       this.spawnL1Item();
       this.l1Interval=setInterval(()=>this.spawnL1Item(), 1000+Math.random()*500);
     },
+    
     spawnL1Item() {
       if(!document.getElementById('track-container')) return;
-      const icons = ['🍟', '🍟', '🍟', '🍟', '🍟', '🍔', '🥤', '🍦', '🥑', '🍕', '🍩', '🍣'];
-      const icon=icons[Math.floor(Math.random()*icons.length)];
+      
+      // FIXED: Smart spawn logic. 35% chance to spawn target, 65% chance to spawn a distractor
+      let icon = '';
+      if (Math.random() < 0.35) {
+          icon = this.l1Target; 
+      } else {
+          // Filter out the target to make sure distractors are truly distractors
+          const distractors = this.l1Pool.filter(i => i !== this.l1Target);
+          icon = distractors[Math.floor(Math.random() * distractors.length)];
+      }
+
       const el=document.createElement('div'); el.className='food-item'; el.textContent=icon;
       document.getElementById('track-container').appendChild(el);
       const dur=2500+Math.random()*500; const startTime=performance.now();
@@ -1294,17 +1311,28 @@
       const anim=el.animate([{right:'-90px'},{right:'110%'}],{duration:dur,easing:'linear'});
       anim.onfinish=()=>{ el.remove(); this.l1Items=this.l1Items.filter(x=>x!==item); };
     },
+    
     checkL1Capture() {
       if(this.currentLevel!==1) return;
       const tc=document.getElementById('track-container'); if(!tc) return;
       const tzRect=document.getElementById('target-zone').getBoundingClientRect();
-      const hit=this.l1Items.find(item=>{ if(item.done||!item.element.parentElement) return false; const r=item.element.getBoundingClientRect(); return r.left<tzRect.right&&r.right>tzRect.left; });
+      const hit=this.l1Items.find(item=>{ 
+        if(item.done||!item.element.parentElement) return false; 
+        
+        // FIXED: Center-based hit detection
+        const r=item.element.getBoundingClientRect(); 
+        const itemCenter = r.left + (r.width / 2);
+        const buffer = 15; // 15 pixel forgiveness buffer
+        
+        return itemCenter > (tzRect.left - buffer) && itemCenter < (tzRect.right + buffer); 
+      });
       if(hit){
         if(hit.icon===this.l1Target){ this.stageData[1].hits++; CognitiveApp.recordHit(); this.stageData[1].reactionTimes.push(performance.now()-hit.spawnTime); hit.element.style.opacity='0'; hit.done=true; this.flashZone('target-zone',true); showToast('Hit! ✓','good'); }
         else{ this.stageData[1].errors++; this.flashZone('target-zone',false); showToast('Wrong item ✗','bad'); }
       } else{ this.stageData[1].errors++; this.flashZone('target-zone',false); showToast('Nothing in zone ✗','bad'); }
       this.updateHud(1);
     },
+    
     setupLevel2() { 
       this.nextStroopTrial(); 
       this._l2KeyHandler = (e) => { if(this.currentLevel===2&&e.key>='1'&&e.key<='5') this.submitStroop(parseInt(e.key)); };
@@ -1323,6 +1351,7 @@
       else{ this.stageData[2].errors++; showToast(`✗ Was ${this.l2CorrectAnswer}`,'bad'); }
       this.updateHud(2); this.nextStroopTrial();
     },
+    
     setupLevel3() {
       this.l3Tickets=[]; this.l3StationCounts={'🍟':0,'🥤':0,'🍔':0,'🍦':0};
       this.l3FoodIcons.forEach(i=>this.hideCount(i));
