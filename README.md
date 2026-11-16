@@ -1,74 +1,49 @@
-# NeuroMetric: Clinical-Grade Cognitive Assessment
+# NeuroMetric
 
-NeuroMetric is a robust, web-based platform designed for longitudinal cognitive screening. It leverages gamified assessments and AI-powered voice processing to track cognitive health across multiple domains, including memory, attention, executive function, and visuospatial processing.
+A web platform for repeated cognitive screening. Users register, complete a battery of game-style cognitive tasks, and track their results over multiple sessions with charts and written interpretations.
 
-## 🚀 Project Objective
-The primary goal is to provide a "Clinical-Grade" tool for researchers and healthcare providers to manage a sample size of patients (30-50), conduct periodic cognitive assessments, and analyze progress over time through data-driven reporting and graphical visualizations.
+This was a small early prototype that fed into [Elaris Island](https://github.com/Anoushkas04/elaris-v3), which takes the same idea of measuring cognition through games and builds it into a narrative game.
 
-## 🛠 Tech Stack
+**Stack:** Go · Gin · GORM · SQLite · JWT + bcrypt · vanilla JavaScript · Tailwind CSS · Chart.js · Docker
 
-### Backend (The Engine)
-- **Language:** Golang (1.21+)
-- **Framework:** [Gin Gonic](https://github.com/gin-gonic/gin) (Fast, minimal REST API framework)
-- **Database:** SQLite (Zero-config, portable, and efficient for relational data)
-- **ORM:** [GORM](https://gorm.io/) (Object-Relational Mapping for secure database queries)
-- **Security:** 
-    - Stateless **JWT (JSON Web Tokens)** for session management.
-    - **Bcrypt** for secure password hashing.
+## Features
 
-### Frontend (The Interface)
-- **Architecture:** Vanilla JavaScript (ES6 Modules) for zero-dependency performance.
-- **Styling:** [Tailwind CSS](https://tailwindcss.com/) for a modern "Cream & Ink" clinical aesthetic.
-- **Visualizations:** [Chart.js](https://www.chartjs.org/) for longitudinal progress tracking and cognitive radars.
-- **State:** Token-based local storage session management.
+- **Assessment battery (`merged_games.html`):** ten timed tasks run in sequence:
+  1. Tile Memory: remember and reproduce a visual sequence
+  2. Delayed Recall (encode): items to be recalled later
+  3. Attention Vigilance: respond to targets in a stream
+  4. Pathfinder: connect nodes in order while switching rules
+  5. Recognition Memory: recall the items from task 2
+  6. Spatial Reasoning
+  7. Clock Drawing
+  8. Kitchen Rush, in three stages of increasing load: conveyor focus, ticket (word) counting, and a combined multitasking round
+- **Metrics:** each session records an overall score, accuracy, total errors, completion time and average reaction time, plus a per-task breakdown stored as JSON.
+- **Reports:** a trend line across sessions, a radar chart of the cognitive profile, per-task bar charts, a plain-language interpretation page, and recommendations based on weaker areas.
+- **Auth:** registration and login with bcrypt-hashed passwords and JWTs. Assessment endpoints are scoped to the signed-in user.
 
-### AI & Processing
-- **Voice Transcription:** [OpenAI Whisper](https://github.com/openai/whisper) (Integrated via Python hybrid subprocess).
-- **Semantic Verification:** Simulated **Gemma** logic for high-fidelity response verification.
+## API
 
-## 📁 Project Structure
-```text
-neurometric-go/
-├── main.go            # Unified Go server (API + Static File Serving)
-├── neurometric.db     # SQLite Database file (Relational storage)
-├── go.mod             # Go dependencies
-└── public/            # Frontend Assets
-    ├── index.html     # Patient Portal (Entry Point)
-    ├── dashboard.html # Navigation Hub
-    ├── merged_games.html # Core Assessment Suite (10 Modules)
-    ├── interpretation.html # Clinical Narrative Report
-    ├── reporting.html  # Visual Charts & Radar Profile
-    ├── recommendations.html # Personalized Care Pathways
-    └── js/
-        └── auth.js    # JWT-based Session Manager
+| Method | Endpoint | Auth |
+|---|---|---|
+| POST | `/api/auth/register` | — |
+| POST | `/api/auth/login` | — |
+| GET | `/api/user/profile` | JWT |
+| POST | `/api/assessments` | JWT |
+| GET | `/api/assessments` | JWT |
+
+## Voice task prototype
+
+`public/ai_processor.py` is a standalone script for a sentence-repetition task. It records from the microphone, transcribes with OpenAI Whisper (`base`), and checks that the key words of the target sentence are present. It isn't connected to the Go server yet.
+
+## Running locally
+
+```bash
+go run main.go           # http://localhost:8080, database at data/neurometric.db
 ```
 
-## 📋 Assessment Modules
-1.  **Tile Memory:** Visual sequencing and retention.
-2.  **Delayed Recall:** Memory encoding verification.
-3.  **Attention Vigilance:** Sustained focus and reaction speed.
-4.  **Pathfinder Network:** Executive function and task-switching.
-5.  **Recognition Memory:** Longitudinal recall verification.
-6.  **Spatial Reasoning:** Visuospatial organization.
-7.  **Clock Drawing:** Classical cognitive deficit screening.
-8.  **Kitchen Rush (3 Stages):** High-load multi-tasking and processing speed.
+Or with Docker:
 
-## ⚙️ Setup & Installation
-
-1.  **Clone & Navigate:**
-    ```bash
-    cd neurometric-go
-    ```
-
-2.  **Run the Server:**
-    ```bash
-    go run main.go
-    ```
-
-3.  **Access the Portal:**
-    Open [http://localhost:8080](http://localhost:8080) in your browser.
-
-## 📈 Clinical Features
-- **Stateless Auth:** Secure patient login without cloud dependencies.
-- **Relational Data:** Every assessment is strictly linked to a patient ID, allowing for SQL-based progress calculation.
-- **Local Sovereignty:** The entire platform (code and data) lives in your project folder, ensuring 100% data control and portability for clinical studies.
+```bash
+docker build -t neurometric .
+docker run -p 8080:8080 -v $(pwd)/data:/app/data neurometric
+```
